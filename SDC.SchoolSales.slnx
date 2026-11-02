@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SmartDevCo.SchoolSales.Api/SmartDevCo.SchoolSales.Api.csproj" />
+    <Project Path="src/SmartDevCo.SchoolSales.Contracts/SmartDevCo.SchoolSales.Contracts.csproj" />
+    <Project Path="src/SmartDevCo.SchoolSales.Core/SmartDevCo.SchoolSales.Core.csproj" />
+    <Project Path="src/SmartDevCo.SchoolSales.Infrastructure/SmartDevCo.SchoolSales.Infrastructure.csproj" />
+  </Folder>
+</Solution>
