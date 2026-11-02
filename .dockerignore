@@ -1,0 +1,15 @@
+
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+.git/
+.gitignore
+.vs/
+.vscode/
+TestResults/
+*.user
+*.suo
+.env
+.env.*
+appsettings.Development.json
