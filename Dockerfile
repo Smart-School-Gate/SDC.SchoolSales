@@ -10,10 +10,10 @@ WORKDIR /src
 COPY . .
 
 # Restore dependencies
-RUN dotnet restore src/SmartSchool.Api/SmartSchool.Api.csproj
+RUN dotnet restore src/SmartDevCo.SchoolSales.Api/SmartDevCo.SchoolSales.Api.csproj
 
 # Publish API
-RUN dotnet publish src/SmartSchool.Api/SmartSchool.Api.csproj \
+RUN dotnet publish src/SmartDevCo.SchoolSales.Api/SmartDevCo.SchoolSales.Api.csproj \
     --configuration Release \
     --no-restore \
     --output /app/publish
@@ -36,4 +36,4 @@ COPY --from=build /app/publish .
 # Run as non-root user
 USER app
 
-ENTRYPOINT ["dotnet", "SmartSchool.Api.dll"]
+ENTRYPOINT ["dotnet", "SmartDevCo.SchoolSales.Api.dll"]
