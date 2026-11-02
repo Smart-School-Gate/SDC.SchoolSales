@@ -24,3 +24,8 @@ appsettings.Local.json
 # Logs
 *.log
 .system_generated/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
