@@ -32,8 +32,9 @@ public class SalesTargetDto
 
 public class CreateSalesTargetRequest
 {
-    public Guid UserId { get; set; }
-    public PeriodType PeriodType { get; set; }
+    public Guid? UserId { get; set; }
+    public bool IsTeamTarget { get; set; }
+    public PeriodType PeriodType { get; set; } = PeriodType.Monthly;
     public int PeriodYear { get; set; }
     public int PeriodNumber { get; set; }
     public int TargetNewSchools { get; set; }
@@ -231,4 +232,126 @@ public class PerformanceReportDto
     public int TotalProposalsRequested { get; set; }
     public int TotalClosedDeals { get; set; }
     public List<RepPerformanceDto> Rows { get; set; } = new();
+}
+
+public class SalesPerformanceDashboardDto
+{
+    public int SelectedYear { get; set; }
+    public int SelectedMonth { get; set; }
+    public string MonthNameAr { get; set; } = string.Empty;
+    public string MonthNameEn { get; set; } = string.Empty;
+    public Guid? FilterRepId { get; set; }
+    public string? FilterRepName { get; set; }
+    public ProductInterest? FilterProduct { get; set; }
+
+    // Primary 5 Monthly KPI Cards
+    public MonthlyKpiSummaryDto SchoolsDiscovered { get; set; } = new();
+    public MonthlyKpiSummaryDto SchoolVisits { get; set; } = new();
+    public MonthlyKpiSummaryDto DemoRequests { get; set; } = new();
+    public MonthlyKpiSummaryDto ProposalsSubmitted { get; set; } = new();
+    public MonthlyKpiSummaryDto ClosedDeals { get; set; } = new();
+    public double OverallAchievementRate { get; set; }
+
+    // Sales Funnel (10 Stages)
+    public List<SalesFunnelStageDto> SalesFunnel { get; set; } = new();
+
+    // Product-Based Breakdown
+    public ProductSalesBreakdownDto ProductBreakdown { get; set; } = new();
+
+    // Sales Representative Performance
+    public List<RepPerformanceSummaryDto> RepPerformances { get; set; } = new();
+
+    // Conversion Analytics
+    public ConversionAnalyticsDto ConversionMetrics { get; set; } = new();
+
+    // Revenue & Commercial Performance
+    public RevenuePerformanceDto RevenueStats { get; set; } = new();
+
+    // Month Comparison & Highlights
+    public MonthComparisonDto Comparison { get; set; } = new();
+
+    public bool HasActivitiesInPeriod { get; set; }
+}
+
+public class MonthlyKpiSummaryDto
+{
+    public string Key { get; set; } = string.Empty;
+    public string TitleAr { get; set; } = string.Empty;
+    public string TitleEn { get; set; } = string.Empty;
+    public int Actual { get; set; }
+    public int Target { get; set; }
+    public double AchievementRate { get; set; }
+    public int PreviousMonthActual { get; set; }
+    public double GrowthPercentage { get; set; }
+}
+
+public class SalesFunnelStageDto
+{
+    public int StageNumber { get; set; }
+    public string StageKey { get; set; } = string.Empty;
+    public string StageNameAr { get; set; } = string.Empty;
+    public string StageNameEn { get; set; } = string.Empty;
+    public int SchoolsCount { get; set; }
+    public double ConversionRateFromPrev { get; set; }
+    public decimal PipelineValueEgp { get; set; }
+}
+
+public class ProductSalesBreakdownDto
+{
+    public int SmartSchoolOpportunities { get; set; }
+    public int AcademyOpportunities { get; set; }
+    public int CombinedOpportunities { get; set; }
+    public decimal SmartSchoolRevenueEgp { get; set; }
+    public decimal AcademyRevenueEgp { get; set; }
+    public decimal TotalRevenueEgp { get; set; }
+    public int SmartSchoolClosedDeals { get; set; }
+    public int AcademyClosedDeals { get; set; }
+}
+
+public class RepPerformanceSummaryDto
+{
+    public Guid RepId { get; set; }
+    public string RepName { get; set; } = string.Empty;
+    public string? RepEmail { get; set; }
+    public int AssignedSchools { get; set; }
+    public int SchoolsDiscovered { get; set; }
+    public int CompletedVisits { get; set; }
+    public int DemoRequests { get; set; }
+    public int CompletedDemos { get; set; }
+    public int SubmittedProposals { get; set; }
+    public int ClosedDeals { get; set; }
+    public decimal TotalContractValueEgp { get; set; }
+    public double MonthlyTargetAchievement { get; set; }
+}
+
+public class ConversionAnalyticsDto
+{
+    public double DiscoveryToContactRate { get; set; }
+    public double ContactToVisitRate { get; set; }
+    public double VisitToDemoRate { get; set; }
+    public double DemoToProposalRate { get; set; }
+    public double ProposalToDealRate { get; set; }
+    public double OverallFunnelWinRate { get; set; }
+    public string PrimaryBottleneckAr { get; set; } = string.Empty;
+    public string PrimaryBottleneckEn { get; set; } = string.Empty;
+}
+
+public class RevenuePerformanceDto
+{
+    public decimal TotalPipelineValueEgp { get; set; }
+    public decimal SubmittedProposalsValueEgp { get; set; }
+    public decimal SignedContractsValueEgp { get; set; }
+    public decimal AmountInvoicedEgp { get; set; }
+    public decimal AmountCollectedEgp { get; set; }
+    public decimal OutstandingPaymentsEgp { get; set; }
+    public decimal AverageDealValueEgp { get; set; }
+    public string CurrencyCode { get; set; } = "EGP";
+}
+
+public class MonthComparisonDto
+{
+    public double OverallActivityGrowthRate { get; set; }
+    public string BestPerformingRepName { get; set; } = string.Empty;
+    public string TopProductCategoryAr { get; set; } = string.Empty;
+    public string TopProductCategoryEn { get; set; } = string.Empty;
 }

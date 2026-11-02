@@ -15,6 +15,8 @@ public class School : BaseEntity
     public LeadSource Source { get; set; } = LeadSource.FieldVisit;
     public SalesStatus SalesStatus { get; set; } = SalesStatus.New;
     public string? GeneralNotes { get; set; }
+    public string? IntelligenceProfileJson { get; set; }
+    public string? DiscoveryAnswersJson { get; set; }
 
     // Ownership & Assignment
     public Guid CreatedByUserId { get; set; }

@@ -152,7 +152,7 @@ export const SalesTargetsPage: React.FC = () => {
         </div>
 
         {/* Left side in RTL (Month Amber Badge & Rep Picker) */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {(isSuperAdmin || isSalesManager) && reps.length > 0 && (
             <select
               value={selectedRepId}
@@ -404,8 +404,8 @@ export const SalesTargetsPage: React.FC = () => {
 
       {/* Set Target Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <Target className="w-5 h-5 text-[#00B4D8]" />

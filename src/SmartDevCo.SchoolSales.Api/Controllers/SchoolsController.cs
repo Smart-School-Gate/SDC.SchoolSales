@@ -58,6 +58,28 @@ public class SchoolsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id:guid}/intelligence")]
+    public async Task<ActionResult<ApiResponse<SchoolDetailDto>>> UpdateSchoolIntelligence(Guid id, [FromBody] UpdateSchoolIntelligenceRequest request)
+    {
+        var result = await _schoolService.UpdateSchoolIntelligenceAsync(id, request.IntelligenceProfileJson);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPut("{id:guid}/discovery-answers")]
+    public async Task<ActionResult<ApiResponse<SchoolDetailDto>>> UpdateSchoolDiscoveryAnswers(Guid id, [FromBody] UpdateSchoolDiscoveryAnswersRequest request)
+    {
+        var result = await _schoolService.UpdateSchoolDiscoveryAnswersAsync(id, request.DiscoveryAnswersJson);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
     [HttpDelete("{id:guid}")]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteSchool(Guid id)
     {

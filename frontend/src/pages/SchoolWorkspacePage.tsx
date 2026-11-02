@@ -34,6 +34,7 @@ import {
   Search,
   MoreHorizontal,
   Edit2,
+  Trash2,
   Users,
   Compass
 } from 'lucide-react';
@@ -58,8 +59,11 @@ import {
   LeadSource,
   VisitOutcomeType,
   ActivityType,
-  TeamMemberDto
+  TeamMemberDto,
+  SchoolIntelligenceProfile
 } from '../types';
+import { SchoolIntelligenceTab } from '../components/school/SchoolIntelligenceTab';
+import { SchoolDiscoveryTab } from '../components/school/SchoolDiscoveryTab';
 
 export const SchoolWorkspacePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -70,7 +74,7 @@ export const SchoolWorkspacePage: React.FC = () => {
   const [school, setSchool] = useState<SchoolDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    'profile' | 'contacts' | 'discovery' | 'presentation' | 'visits'
+    'profile' | 'intelligence' | 'contacts' | 'discovery' | 'presentation' | 'visits'
   >('profile');
 
   // Discovery State
@@ -161,14 +165,199 @@ export const SchoolWorkspacePage: React.FC = () => {
   const [editSchoolError, setEditSchoolError] = useState<string | null>(null);
   const [editSchoolSubmitting, setEditSchoolSubmitting] = useState(false);
 
-  const canEditSchool = (s: SchoolDetailDto | null) => {
-    if (!s) return false;
+  // Universal permission check: Admin or Creator/Assignee
+  const canManageItem = (itemUserId?: string) => {
     if (isSuperAdmin || isSalesManager) return true;
     if (!user) return false;
-    if (s.createdByUserId && s.createdByUserId === user.id) return true;
-    if (s.assignedToUserId && s.assignedToUserId === user.id) return true;
-    if (!s.createdByUserId) return true;
+    if (itemUserId && itemUserId === user.id) return true;
+    if (school?.createdByUserId && school.createdByUserId === user.id) return true;
+    if (school?.assignedToUserId && school.assignedToUserId === user.id) return true;
+    if (!itemUserId) return true;
     return false;
+  };
+
+  const canEditSchool = (s: SchoolDetailDto | null) => {
+    return canManageItem(s?.createdByUserId);
+  };
+
+  const intelligenceProfile: SchoolIntelligenceProfile | null = React.useMemo(() => {
+    if (!school?.intelligenceProfileJson) return null;
+    try {
+      return JSON.parse(school.intelligenceProfileJson);
+    } catch (e) {
+      console.error('Failed to parse intelligence JSON', e);
+      return null;
+    }
+  }, [school?.intelligenceProfileJson]);
+
+  const handleUpdateIntelligence = async (jsonString: string): Promise<boolean> => {
+    if (!id) return false;
+    try {
+      const res = await api.updateSchoolIntelligence(id, jsonString);
+      if (res.success && res.data) {
+        setSchool(res.data);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  // Edit Contact State
+  const [isEditContactModalOpen, setIsEditContactModalOpen] = useState(false);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [editContactForm, setEditContactForm] = useState({
+    fullName: '',
+    jobTitle: '',
+    phone: '',
+    email: '',
+    isDecisionMaker: true,
+    isPrimaryContact: false,
+    contactNotes: ''
+  });
+  const [editContactError, setEditContactError] = useState<string | null>(null);
+  const [editContactSubmitting, setEditContactSubmitting] = useState(false);
+
+  const handleOpenEditContactModal = (c: SchoolContactDto) => {
+    setSelectedContactId(c.id);
+    setEditContactForm({
+      fullName: c.fullName || '',
+      jobTitle: c.jobTitle || '',
+      phone: c.phone || '',
+      email: c.email || '',
+      isDecisionMaker: !!c.isDecisionMaker,
+      isPrimaryContact: !!c.isPrimaryContact,
+      contactNotes: c.contactNotes || ''
+    });
+    setEditContactError(null);
+    setIsEditContactModalOpen(true);
+  };
+
+  const handleEditContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !selectedContactId) return;
+    setEditContactSubmitting(true);
+    setEditContactError(null);
+    const res = await api.updateContact(id, selectedContactId, editContactForm);
+    setEditContactSubmitting(false);
+    if (res.success) {
+      setIsEditContactModalOpen(false);
+      loadWorkspaceData();
+    } else {
+      setEditContactError(res.message || (language === 'ar' ? 'فشل تعديل جهة الاتصال' : 'Failed to update contact'));
+    }
+  };
+
+  const handleDeleteContact = async (contactId: string) => {
+    if (!id) return;
+    if (!window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف جهة الاتصال هذه؟' : 'Are you sure you want to delete this contact?')) return;
+    const res = await api.deleteContact(id, contactId);
+    if (res.success) {
+      loadWorkspaceData();
+    } else {
+      alert(res.message || (language === 'ar' ? 'فشل حذف جهة الاتصال' : 'Failed to delete contact'));
+    }
+  };
+
+  // Edit Visit State
+  const [isEditVisitModalOpen, setIsEditVisitModalOpen] = useState(false);
+  const [selectedVisitId, setSelectedVisitId] = useState<string | null>(null);
+  const [editVisitForm, setEditVisitForm] = useState({
+    visitDate: '',
+    contactPerson: '',
+    contactPosition: '',
+    decisionMakerReached: true,
+    interestedProducts: 'Both' as ProductInterest,
+    visitOutcome: 'DemoRequested' as VisitOutcomeType,
+    notes: '',
+    nextAction: '',
+    nextFollowUpDate: ''
+  });
+  const [editVisitError, setEditVisitError] = useState<string | null>(null);
+  const [editVisitSubmitting, setEditVisitSubmitting] = useState(false);
+
+  const handleOpenEditVisitModal = async (v: VisitSummaryDto | VisitDto) => {
+    setSelectedVisitId(v.id);
+    const visitDateFormatted = v.visitDate ? new Date(v.visitDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    const followUpDateFormatted = v.nextFollowUpDate ? new Date(v.nextFollowUpDate).toISOString().split('T')[0] : '';
+    
+    // Bind initial values from summary immediately
+    setEditVisitForm({
+      visitDate: visitDateFormatted,
+      contactPerson: v.contactPerson || '',
+      contactPosition: ('contactPosition' in v && v.contactPosition) ? v.contactPosition : '',
+      decisionMakerReached: !!v.decisionMakerReached,
+      interestedProducts: v.interestedProducts || 'Both',
+      visitOutcome: v.visitOutcome || 'DemoRequested',
+      notes: ('notes' in v && v.notes) ? v.notes : '',
+      nextAction: v.nextAction || '',
+      nextFollowUpDate: followUpDateFormatted
+    });
+    setEditVisitError(null);
+    setIsEditVisitModalOpen(true);
+
+    // Fetch full visit details to bind notes & position
+    try {
+      const fullRes = await api.getVisitById(v.id);
+      if (fullRes.success && fullRes.data) {
+        const d = fullRes.data;
+        setEditVisitForm({
+          visitDate: d.visitDate ? new Date(d.visitDate).toISOString().split('T')[0] : visitDateFormatted,
+          contactPerson: d.contactPerson || v.contactPerson || '',
+          contactPosition: d.contactPosition || '',
+          decisionMakerReached: !!d.decisionMakerReached,
+          interestedProducts: d.interestedProducts || 'Both',
+          visitOutcome: d.visitOutcome || 'DemoRequested',
+          notes: d.notes || '',
+          nextAction: d.nextAction || v.nextAction || '',
+          nextFollowUpDate: d.nextFollowUpDate ? new Date(d.nextFollowUpDate).toISOString().split('T')[0] : followUpDateFormatted
+        });
+      }
+    } catch {
+      // Form is already bound with summary
+    }
+  };
+
+  const handleEditVisitSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedVisitId) return;
+    setEditVisitSubmitting(true);
+    setEditVisitError(null);
+    const res = await api.updateVisit(selectedVisitId, editVisitForm);
+    setEditVisitSubmitting(false);
+    if (res.success) {
+      setIsEditVisitModalOpen(false);
+      loadWorkspaceData();
+    } else {
+      setEditVisitError(res.message || (language === 'ar' ? 'فشل تعديل بيانات الزيارة' : 'Failed to update visit'));
+    }
+  };
+
+  const handleDeleteVisit = async (visitId: string) => {
+    if (!window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذه الزيارة؟' : 'Are you sure you want to delete this visit?')) return;
+    const res = await api.deleteVisit(visitId);
+    if (res.success) {
+      loadWorkspaceData();
+    } else {
+      alert(res.message || (language === 'ar' ? 'فشل حذف الزيارة' : 'Failed to delete visit'));
+    }
+  };
+
+  // Activity Handlers
+  const handleToggleActivity = async (activityId: string) => {
+    const res = await api.toggleCompleteActivity(activityId);
+    if (res.success) {
+      loadWorkspaceData();
+    }
+  };
+
+  const handleDeleteActivity = async (activityId: string) => {
+    if (!window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذه المهمة؟' : 'Are you sure you want to delete this task?')) return;
+    const res = await api.deleteActivity(activityId);
+    if (res.success) {
+      loadWorkspaceData();
+    }
   };
 
   const handleOpenEditSchoolModal = () => {
@@ -418,6 +607,23 @@ export const SchoolWorkspacePage: React.FC = () => {
               {t(`schoolType.${school.schoolType}`)}
             </span>
 
+            {/* Intelligence Readiness Badge */}
+            {intelligenceProfile && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('intelligence')}
+                className="px-2.5 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                title={language === 'ar' ? 'عرض ملف الاستخبارات المدرسية' : 'View Intelligence Dossier'}
+              >
+                <Sparkles className="w-3 h-3 text-indigo-600" />
+                <span>
+                  {intelligenceProfile.researchMeta?.verificationStatus === 'VERIFIED'
+                    ? (language === 'ar' ? 'ملف موثق (95%)' : 'Verified (95%)')
+                    : (language === 'ar' ? 'تدقيق استخباراتي' : 'Intelligence')}
+                </span>
+              </button>
+            )}
+
             {/* Edit School Button */}
             {canEditSchool(school) && (
               <button
@@ -482,6 +688,7 @@ export const SchoolWorkspacePage: React.FC = () => {
       <div className="border-b border-slate-200/90 flex items-center justify-start gap-6 sm:gap-8 overflow-x-auto text-xs sm:text-sm font-semibold">
         {[
           { id: 'profile', label: language === 'ar' ? 'ملف المدرسة والملكية' : 'School Profile & Ownership' },
+          { id: 'intelligence', label: language === 'ar' ? 'ملف الاستخبارات والتحقق (Intelligence)' : 'Intelligence Dossier' },
           { id: 'contacts', label: `${language === 'ar' ? 'جهات الاتصال' : 'Contacts'} (${school.contacts.length || 1})` },
           { id: 'discovery', label: language === 'ar' ? 'استكشاف المدرسة' : 'Discovery Questions' },
           { id: 'presentation', label: language === 'ar' ? 'معرض الشرائح' : 'Pitch Deck Showcase' },
@@ -548,13 +755,15 @@ export const SchoolWorkspacePage: React.FC = () => {
                 <h3 className="font-bold text-slate-900 text-sm">
                   {language === 'ar' ? 'المندوب المسؤول' : 'Assigned Representative'}
                 </h3>
-                <button
-                  onClick={handleOpenReassignModal}
-                  className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
-                  title={language === 'ar' ? 'تعديل الإسناد' : 'Reassign'}
-                >
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
+                {canManageItem(school.assignedToUserId) && (
+                  <button
+                    onClick={handleOpenReassignModal}
+                    className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition cursor-pointer"
+                    title={language === 'ar' ? 'تعديل إسناد المندوب' : 'Reassign Rep'}
+                  >
+                    <Edit2 className="w-3.5 h-3.5 text-cyan-600" />
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center justify-between">
@@ -585,12 +794,24 @@ export const SchoolWorkspacePage: React.FC = () => {
                 <h3 className="font-bold text-slate-900 text-sm">
                   {language === 'ar' ? 'سجل الزيارات' : 'Visit Snapshot'}
                 </h3>
-                <button
-                  onClick={() => setIsLogVisitModalOpen(true)}
-                  className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
-                >
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  {school.recentVisits.length > 0 && canManageItem() && (
+                    <button
+                      onClick={() => handleOpenEditVisitModal(school.recentVisits[0])}
+                      className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition cursor-pointer"
+                      title={language === 'ar' ? 'تعديل بيانات آخر زيارة' : 'Edit Latest Visit'}
+                    >
+                      <Edit2 className="w-3.5 h-3.5 text-cyan-600" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsLogVisitModalOpen(true)}
+                    className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition cursor-pointer"
+                    title={language === 'ar' ? 'تسجيل زيارة جديدة' : 'Log Visit'}
+                  >
+                    <Plus className="w-3.5 h-3.5 text-cyan-600" />
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-2.5 text-xs text-slate-600">
@@ -665,12 +886,24 @@ export const SchoolWorkspacePage: React.FC = () => {
                 <h3 className="font-bold text-slate-900 text-sm">
                   {language === 'ar' ? `جهات الاتصال (${school.contacts.length || 1})` : `Contacts (${school.contacts.length || 1})`}
                 </h3>
-                <button
-                  onClick={() => setIsAddContactModalOpen(true)}
-                  className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
-                >
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  {decisionMaker && canManageItem() && (
+                    <button
+                      onClick={() => handleOpenEditContactModal(decisionMaker)}
+                      className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition cursor-pointer"
+                      title={language === 'ar' ? 'تعديل جهة الاتصال' : 'Edit Contact'}
+                    >
+                      <Edit2 className="w-3.5 h-3.5 text-cyan-600" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsAddContactModalOpen(true)}
+                    className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition cursor-pointer"
+                    title={language === 'ar' ? 'إضافة جهة اتصال جديدة' : 'Add Contact'}
+                  >
+                    <Plus className="w-3.5 h-3.5 text-cyan-600" />
+                  </button>
+                </div>
               </div>
 
               {/* Decision Maker Snapshot */}
@@ -811,111 +1044,72 @@ export const SchoolWorkspacePage: React.FC = () => {
 
               {/* Activity / Task Checklist Items with Connecting Guide Line */}
               <div className="relative border-s border-slate-200/90 ms-3 space-y-4 ps-4 pt-1">
-                {/* Item 1: In Progress / Circle */}
-                <div className="relative flex items-start justify-between gap-3 text-xs">
-                  <div className="absolute -start-[23px] top-1 w-3.5 h-3.5 rounded-full border-2 border-slate-300 bg-white" />
-                  <div className="space-y-0.5 pe-2">
-                    <div className="font-bold text-slate-800">
-                      {language === 'ar' ? 'تيوم تحصافة' : 'Interactive Demo Meeting'}
+                {school.recentActivities && school.recentActivities.length > 0 ? (
+                  school.recentActivities.map((act) => (
+                    <div key={act.id} className="relative flex items-start justify-between gap-3 text-xs group">
+                      <button
+                        onClick={() => handleToggleActivity(act.id)}
+                        className={`absolute -start-[23px] top-0.5 w-4 h-4 rounded transition cursor-pointer flex items-center justify-center ${
+                          act.isCompleted ? 'bg-[#009688] text-white' : 'border border-slate-300 bg-white hover:border-cyan-500'
+                        }`}
+                        title={act.isCompleted ? (language === 'ar' ? 'إلغاء الإكمال' : 'Mark Incomplete') : (language === 'ar' ? 'تعيين كمكتمل' : 'Mark Complete')}
+                      >
+                        {act.isCompleted && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                      </button>
+                      <div className="space-y-0.5 pe-2 flex-1">
+                        <div className={`font-bold ${act.isCompleted ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                          {act.subject}
+                        </div>
+                        {act.description && (
+                          <div className="text-[11px] text-slate-500 leading-snug">
+                            {act.description}
+                          </div>
+                        )}
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          {act.userName} • {new Date(act.createdAtUtc).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US')}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium ${
+                          act.isCompleted ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {act.isCompleted ? (language === 'ar' ? 'مكتمل' : 'Done') : (language === 'ar' ? 'قيد التنفيذ' : 'Pending')}
+                        </span>
+                        {canManageItem(act.userId) && (
+                          <button
+                            onClick={() => handleDeleteActivity(act.id)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 transition cursor-pointer"
+                            title={language === 'ar' ? 'حذف المهمة' : 'Delete Task'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-slate-400 leading-snug">
-                      {language === 'ar' ? 'في امعدمات حمدنا لقر الإسنة في المتاميس على المسترية العناء الكثير.' : 'Prepared presentation deck for board review'}
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-6 text-slate-400 text-xs italic">
+                    {language === 'ar' ? 'لا توجد أنشطة مسجلة بعد. استخدم الشريط أعلاه لإضافة نشاط جديد.' : 'No activities recorded yet.'}
                   </div>
-                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium shrink-0">
-                    {language === 'ar' ? 'اليوم' : 'Today'}
-                  </span>
-                </div>
-
-                {/* Item 2: Completed / Teal Checked */}
-                <div className="relative flex items-start justify-between gap-3 text-xs">
-                  <div className="absolute -start-[23px] top-1 w-3.5 h-3.5 rounded bg-[#009688] text-white flex items-center justify-center">
-                    <Check className="w-2.5 h-2.5 stroke-[3]" />
-                  </div>
-                  <div className="space-y-0.5 pe-2">
-                    <div className="font-bold text-slate-800">
-                      {language === 'ar' ? 'تحديث البيانات' : 'Update Data'}
-                    </div>
-                    <div className="text-[11px] text-slate-400 leading-snug">
-                      {language === 'ar' ? 'العميل المصالح على قمي البيانات' : 'Client expressed strong interest in LMS & Cloud Control'}
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium shrink-0">
-                    {language === 'ar' ? 'أمس' : 'Yesterday'}
-                  </span>
-                </div>
-
-                {/* Item 3: Completed / Teal Checked */}
-                <div className="relative flex items-start justify-between gap-3 text-xs">
-                  <div className="absolute -start-[23px] top-1 w-3.5 h-3.5 rounded bg-[#009688] text-white flex items-center justify-center">
-                    <Check className="w-2.5 h-2.5 stroke-[3]" />
-                  </div>
-                  <div className="space-y-0.5 pe-2">
-                    <div className="font-bold text-slate-800">
-                      {language === 'ar' ? 'تحديث البيانات' : 'Update Data'}
-                    </div>
-                    <div className="text-[11px] text-slate-400 leading-snug">
-                      {language === 'ar' ? 'العميل المصالح بدوافى قمي البيانات' : 'Sent technical pricing comparison matrix via email'}
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium shrink-0">
-                    {language === 'ar' ? 'أمس' : 'Yesterday'}
-                  </span>
-                </div>
-
-                {/* Item 4: Unchecked Box */}
-                <div className="relative flex items-start justify-between gap-3 text-xs">
-                  <div className="absolute -start-[23px] top-1 w-3.5 h-3.5 rounded border border-slate-300 bg-white" />
-                  <div className="space-y-0.5 pe-2">
-                    <div className="font-bold text-slate-800">
-                      {language === 'ar' ? 'تم الإسناد إلى Rootaca' : 'Assigned to Rootaca'}
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      {language === 'ar' ? '13 نوفمبر 2023' : '13 Nov 2023'}
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium shrink-0">
-                    {language === 'ar' ? 'أمس' : 'Yesterday'}
-                  </span>
-                </div>
-
-                {/* Item 5: Unchecked Box */}
-                <div className="relative flex items-start justify-between gap-3 text-xs">
-                  <div className="absolute -start-[23px] top-1 w-3.5 h-3.5 rounded border border-slate-300 bg-white" />
-                  <div className="space-y-0.5 pe-2">
-                    <div className="font-bold text-slate-800">
-                      {language === 'ar' ? 'مكالمة متابعة' : 'Follow-up Call'}
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      {language === 'ar' ? '12 نوفمبر 2023' : '12 Nov 2023'}
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium shrink-0">
-                    {language === 'ar' ? 'اليوم' : 'Today'}
-                  </span>
-                </div>
-
-                {/* Item 6: Unchecked Box */}
-                <div className="relative flex items-start justify-between gap-3 text-xs">
-                  <div className="absolute -start-[23px] top-1 w-3.5 h-3.5 rounded border border-slate-300 bg-white" />
-                  <div className="space-y-0.5 pe-2">
-                    <div className="font-bold text-slate-800">
-                      {language === 'ar' ? 'تحديث البيانات' : 'Update Data'}
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      {language === 'ar' ? '1 نوفمبر 2023' : '1 Nov 2023'}
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium shrink-0">
-                    {language === 'ar' ? 'أمس' : 'Yesterday'}
-                  </span>
-                </div>
+                )}
               </div>
             </div>
 
           </div>
 
         </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB: SCHOOL INTELLIGENCE DOSSIER & VERIFICATION GRID     */}
+      {/* ======================================================== */}
+      {activeTab === 'intelligence' && (
+        <SchoolIntelligenceTab
+          school={school}
+          intelligenceProfile={intelligenceProfile}
+          canEdit={canEditSchool(school)}
+          onUpdateIntelligence={handleUpdateIntelligence}
+        />
       )}
 
       {/* ======================================================== */}
@@ -984,11 +1178,31 @@ export const SchoolWorkspacePage: React.FC = () => {
                     <MessageSquare className="w-3 h-3 fill-current" />
                     <span>{language === 'ar' ? 'واتساب' : 'WhatsApp'}</span>
                   </a>
-                  {c.isPrimaryContact && (
-                    <span className="text-[11px] text-cyan-600 font-semibold">
-                      {language === 'ar' ? 'جهة اتصال رئيسية' : 'Primary'}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {canManageItem() && (
+                      <>
+                        <button
+                          onClick={() => handleOpenEditContactModal(c)}
+                          className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition cursor-pointer"
+                          title={language === 'ar' ? 'تعديل بيانات جهة الاتصال' : 'Edit Contact'}
+                        >
+                          <Edit2 className="w-3.5 h-3.5 text-cyan-600" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteContact(c.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                          title={language === 'ar' ? 'حذف جهة الاتصال' : 'Delete Contact'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                        </button>
+                      </>
+                    )}
+                    {c.isPrimaryContact && (
+                      <span className="text-[11px] text-cyan-600 font-semibold ms-1">
+                        {language === 'ar' ? 'جهة اتصال رئيسية' : 'Primary'}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -997,47 +1211,13 @@ export const SchoolWorkspacePage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* TAB 3: DISCOVERY & NEEDS ASSESSMENT                      */}
+      {/* TAB 3: DISCOVERY & NEEDS ASSESSMENT QUESTIONNAIRE        */}
       {/* ======================================================== */}
       {activeTab === 'discovery' && (
-        <div className="space-y-6">
-          <div className="bg-cyan-50 border border-cyan-200 p-4 rounded-xl text-cyan-950 text-xs sm:text-sm font-semibold flex items-center gap-3">
-            <span className="text-xl shrink-0">💡</span>
-            <span>
-              {language === 'ar'
-                ? 'استبيان استكشاف احتياجات المدرسة يساعد في تخصيص العرض التقديمي Keynote وحساب السعر بدقة.'
-                : 'Discovery questions help tailor the presentation deck and offer accurate pricing.'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-              <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-2">
-                {language === 'ar' ? '1. نظام إدارة المدرسة (SMS)' : '1. School Management System'}
-              </h4>
-              <div className="space-y-3">
-                {managementAnswers.map((ans, idx) => (
-                  <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed">
-                    {ans}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
-              <h4 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-2">
-                {language === 'ar' ? '2. أكاديمية البرمجة والذكاء الاصطناعي' : '2. Coding & AI Academy'}
-              </h4>
-              <div className="space-y-3">
-                {academyAnswers.map((ans, idx) => (
-                  <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed">
-                    {ans}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        <SchoolDiscoveryTab
+          school={school}
+          onSchoolUpdated={(updatedSchool) => setSchool(updatedSchool)}
+        />
       )}
 
       {/* ======================================================== */}
@@ -1133,6 +1313,7 @@ export const SchoolWorkspacePage: React.FC = () => {
                     <th className="px-5 py-3.5 text-start">{language === 'ar' ? 'المندوب' : 'Representative'}</th>
                     <th className="px-5 py-3.5 text-start">{language === 'ar' ? 'النتيجة' : 'Outcome'}</th>
                     <th className="px-5 py-3.5 text-start">{language === 'ar' ? 'الإجراء القادم' : 'Next Step'}</th>
+                    <th className="px-5 py-3.5 text-center">{language === 'ar' ? 'الإجراءات' : 'Actions'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1151,11 +1332,31 @@ export const SchoolWorkspacePage: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-5 py-4 text-slate-600">{v.nextAction || '—'}</td>
+                      <td className="px-5 py-4 text-center">
+                        {canManageItem() && (
+                          <div className="inline-flex items-center gap-1.5 justify-center">
+                            <button
+                              onClick={() => handleOpenEditVisitModal(v)}
+                              className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition cursor-pointer"
+                              title={language === 'ar' ? 'تعديل بيانات الزيارة' : 'Edit Visit'}
+                            >
+                              <Edit2 className="w-3.5 h-3.5 text-cyan-600" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteVisit(v.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                              title={language === 'ar' ? 'حذف الزيارة' : 'Delete Visit'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {school.recentVisits.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-400 italic">
+                      <td colSpan={6} className="py-8 text-center text-slate-400 italic">
                         {language === 'ar' ? 'لم يتم تسجيل أي زيارات ميدانية لهذه المدرسة بعد' : 'No field visits recorded yet.'}
                       </td>
                     </tr>
@@ -1188,8 +1389,8 @@ export const SchoolWorkspacePage: React.FC = () => {
       {/* MODAL: ADD CONTACT                                       */}
       {/* ======================================================== */}
       {isAddContactModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900">
                 {language === 'ar' ? 'إضافة جهة اتصال جديدة' : 'Add New Contact'}
@@ -1300,8 +1501,8 @@ export const SchoolWorkspacePage: React.FC = () => {
       {/* MODAL: LOG VISIT                                         */}
       {/* ======================================================== */}
       {isLogVisitModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900">
                 {language === 'ar' ? 'تسجيل زيارة ميدانية جديدة' : 'Log Field Visit'}
@@ -1312,7 +1513,7 @@ export const SchoolWorkspacePage: React.FC = () => {
             </div>
 
             <form onSubmit={handleLogVisitSubmit} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">{language === 'ar' ? 'تاريخ الزيارة *' : 'Visit Date *'}</label>
                   <input
@@ -1451,8 +1652,8 @@ export const SchoolWorkspacePage: React.FC = () => {
       {/* MODAL: ADD ACTIVITY                                      */}
       {/* ======================================================== */}
       {isAddActivityModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900">
                 {language === 'ar' ? 'تسجيل نشاط أو مهمة متابعة' : 'Log Activity or Task'}
@@ -1524,8 +1725,8 @@ export const SchoolWorkspacePage: React.FC = () => {
       {/* MODAL: REASSIGN REPRESENTATIVE                           */}
       {/* ======================================================== */}
       {isReassignModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900">
                 {language === 'ar' ? 'إسناد المدرسة لمندوب مبيعات' : 'Reassign Sales Representative'}
@@ -1590,11 +1791,293 @@ export const SchoolWorkspacePage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* MODAL: EDIT SCHOOL DETAILS                               */}
+      {/* MODAL: EDIT CONTACT                                      */}
       {/* ======================================================== */}
+      {isEditContactModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-cyan-600" />
+                <span>{language === 'ar' ? 'تعديل بيانات جهة الاتصال' : 'Edit Contact Details'}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEditContactModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editContactError && (
+              <div className="p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold border border-rose-200">
+                {editContactError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditContactSubmit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">{language === 'ar' ? 'الاسم الكامل *' : 'Full Name *'}</label>
+                <input
+                  type="text"
+                  required
+                  value={editContactForm.fullName}
+                  onChange={e => setEditContactForm({ ...editContactForm, fullName: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:bg-white focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">{language === 'ar' ? 'المسمى الوظيفي *' : 'Job Title *'}</label>
+                <input
+                  type="text"
+                  required
+                  value={editContactForm.jobTitle}
+                  onChange={e => setEditContactForm({ ...editContactForm, jobTitle: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">{language === 'ar' ? 'رقم الهاتف *' : 'Phone *'}</label>
+                  <input
+                    type="tel"
+                    required
+                    value={editContactForm.phone}
+                    onChange={e => setEditContactForm({ ...editContactForm, phone: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:bg-white focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">{t('common.email')}</label>
+                  <input
+                    type="email"
+                    value={editContactForm.email}
+                    onChange={e => setEditContactForm({ ...editContactForm, email: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={editContactForm.isDecisionMaker}
+                    onChange={e => setEditContactForm({ ...editContactForm, isDecisionMaker: e.target.checked })}
+                    className="rounded text-cyan-600 focus:ring-cyan-500"
+                  />
+                  <span>{language === 'ar' ? 'صانع قرار مباشر' : 'Decision Maker'}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={editContactForm.isPrimaryContact}
+                    onChange={e => setEditContactForm({ ...editContactForm, isPrimaryContact: e.target.checked })}
+                    className="rounded text-cyan-600 focus:ring-cyan-500"
+                  />
+                  <span>{language === 'ar' ? 'جهة اتصال رئيسية' : 'Primary Contact'}</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">{t('common.notes')}</label>
+                <textarea
+                  rows={2}
+                  value={editContactForm.contactNotes}
+                  onChange={e => setEditContactForm({ ...editContactForm, contactNotes: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditContactModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={editContactSubmitting}
+                  className="px-5 py-2 bg-[#009688] hover:bg-[#00897B] disabled:opacity-50 text-white rounded-xl font-bold shadow-xs cursor-pointer"
+                >
+                  {editContactSubmitting ? t('common.loading') : (language === 'ar' ? 'حفظ التعديلات' : 'Save Changes')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: EDIT VISIT                                         */}
+      {/* ======================================================== */}
+      {isEditVisitModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-cyan-600" />
+                <span>{language === 'ar' ? 'تعديل بيانات الزيارة الميدانية' : 'Edit Field Visit Details'}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEditVisitModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editVisitError && (
+              <div className="p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold border border-rose-200">
+                {editVisitError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditVisitSubmit} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">{language === 'ar' ? 'تاريخ الزيارة *' : 'Visit Date *'}</label>
+                  <input
+                    type="date"
+                    required
+                    value={editVisitForm.visitDate}
+                    onChange={e => setEditVisitForm({ ...editVisitForm, visitDate: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono focus:bg-white focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">{language === 'ar' ? 'المنتج المهتم به' : 'Product'}</label>
+                  <select
+                    value={editVisitForm.interestedProducts}
+                    onChange={e => setEditVisitForm({ ...editVisitForm, interestedProducts: e.target.value as ProductInterest })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:border-cyan-500 focus:outline-none font-medium"
+                  >
+                    <option value="Both">{t('product.Both')}</option>
+                    <option value="SmartSchool">{t('product.SmartSchool')}</option>
+                    <option value="Academy">{t('product.Academy')}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">{language === 'ar' ? 'المسؤول الذي قابلته *' : 'Met With *'}</label>
+                  <input
+                    type="text"
+                    required
+                    value={editVisitForm.contactPerson}
+                    onChange={e => setEditVisitForm({ ...editVisitForm, contactPerson: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:bg-white focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">{language === 'ar' ? 'منصب المسؤول' : 'Position'}</label>
+                  <input
+                    type="text"
+                    placeholder={language === 'ar' ? 'مثال: مدير المدرسة، الناظر' : 'e.g. Principal'}
+                    value={editVisitForm.contactPosition}
+                    onChange={e => setEditVisitForm({ ...editVisitForm, contactPosition: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">{language === 'ar' ? 'نتيجة الزيارة *' : 'Outcome *'}</label>
+                <select
+                  value={editVisitForm.visitOutcome}
+                  onChange={e => setEditVisitForm({ ...editVisitForm, visitOutcome: e.target.value as VisitOutcomeType })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:bg-white focus:border-cyan-500 focus:outline-none"
+                >
+                  <option value="DemoRequested">{t('outcome.DemoRequested')}</option>
+                  <option value="MeetingScheduled">{t('outcome.MeetingScheduled')}</option>
+                  <option value="ProposalRequested">{t('outcome.ProposalRequested')}</option>
+                  <option value="DetailsRequested">{t('outcome.DetailsRequested')}</option>
+                  <option value="DecisionMakerNotReached">{t('outcome.DecisionMakerNotReached')}</option>
+                  <option value="FollowUpLater">{t('outcome.FollowUpLater')}</option>
+                  <option value="ClosedWon">{t('outcome.ClosedWon')}</option>
+                  <option value="ClosedLost">{t('outcome.ClosedLost')}</option>
+                  <option value="NotInterested">{t('outcome.NotInterested')}</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {language === 'ar' ? 'الإجراء التالي المتفق عليه' : 'Next Action / Step'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={language === 'ar' ? 'مثال: إرسال عرض مالي، تنسيق اجتماع ديمو...' : 'e.g. Send proposal...'}
+                    value={editVisitForm.nextAction}
+                    onChange={e => setEditVisitForm({ ...editVisitForm, nextAction: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {language === 'ar' ? 'موعد المتابعة القادم' : 'Next Follow-up Date'}
+                  </label>
+                  <input
+                    type="date"
+                    value={editVisitForm.nextFollowUpDate}
+                    onChange={e => setEditVisitForm({ ...editVisitForm, nextFollowUpDate: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono focus:bg-white focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={editVisitForm.decisionMakerReached}
+                    onChange={e => setEditVisitForm({ ...editVisitForm, decisionMakerReached: e.target.checked })}
+                    className="rounded text-cyan-600 focus:ring-cyan-500"
+                  />
+                  <span>{language === 'ar' ? 'تمت مقابلة صاحب القرار الرئيسي في الجلسة' : 'Reached Key Decision Maker'}</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">{language === 'ar' ? 'ملاحظات تفصيلية عن الزيارة' : 'Visit Notes'}</label>
+                <textarea
+                  rows={2}
+                  value={editVisitForm.notes}
+                  onChange={e => setEditVisitForm({ ...editVisitForm, notes: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditVisitModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={editVisitSubmitting}
+                  className="px-5 py-2 bg-[#009688] hover:bg-[#00897B] disabled:opacity-50 text-white rounded-xl font-bold shadow-xs cursor-pointer"
+                >
+                  {editVisitSubmitting ? t('common.loading') : (language === 'ar' ? 'حفظ التعديلات' : 'Save Changes')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {isEditSchoolModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-cyan-600" />
@@ -1649,6 +2132,21 @@ export const SchoolWorkspacePage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {language === 'ar' ? 'الحي / المنطقة' : 'District'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editSchoolForm.district}
+                    onChange={e => setEditSchoolForm({ ...editSchoolForm, district: e.target.value })}
+                    placeholder="e.g. الشروق، التجمع، المعادي"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-cyan-500 focus:bg-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     {language === 'ar' ? 'نوع المدرسة *' : 'School Type *'}
                   </label>
                   <select
@@ -1661,6 +2159,24 @@ export const SchoolWorkspacePage: React.FC = () => {
                     <option value="Language">{language === 'ar' ? 'تجريبي / لغات (Language)' : 'Language'}</option>
                     <option value="National">{language === 'ar' ? 'أهلي / قومي (National)' : 'National'}</option>
                     <option value="Experimental">{language === 'ar' ? 'رسمي متميز (Experimental)' : 'Experimental'}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {language === 'ar' ? 'مصدر العميل المحتمل' : 'Lead Source'}
+                  </label>
+                  <select
+                    value={editSchoolForm.source}
+                    onChange={e => setEditSchoolForm({ ...editSchoolForm, source: e.target.value as LeadSource })}
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-cyan-500 focus:bg-white focus:outline-none font-medium"
+                  >
+                    <option value="FieldVisit">{language === 'ar' ? 'زيارة ميدانية' : 'Field Visit'}</option>
+                    <option value="Referral">{language === 'ar' ? 'توصية / ترشيح' : 'Referral'}</option>
+                    <option value="SocialMedia">{language === 'ar' ? 'سوشيال ميديا' : 'Social Media'}</option>
+                    <option value="InboundCall">{language === 'ar' ? 'اتصال وارد' : 'Inbound Call'}</option>
+                    <option value="Website">{language === 'ar' ? 'الموقع الإلكتروني' : 'Website'}</option>
+                    <option value="Exhibition">{language === 'ar' ? 'معرض / مؤتمر' : 'Exhibition'}</option>
+                    <option value="Other">{language === 'ar' ? 'أخرى' : 'Other'}</option>
                   </select>
                 </div>
               </div>

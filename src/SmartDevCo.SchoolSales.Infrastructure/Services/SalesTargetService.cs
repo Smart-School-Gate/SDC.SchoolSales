@@ -8,7 +8,7 @@ using SmartDevCo.SchoolSales.Infrastructure.Data;
 
 namespace SmartDevCo.SchoolSales.Infrastructure.Services;
 
-public class SalesTargetService : ISalesTargetService
+public partial class SalesTargetService : ISalesTargetService
 {
     private readonly ApplicationDbContext _db;
     private readonly ICurrentUserService _currentUser;
@@ -65,15 +65,15 @@ public class SalesTargetService : ISalesTargetService
             var actualProposals = await visitsQuery.CountAsync(v => v.VisitOutcome == VisitOutcomeType.ProposalRequested);
             var actualDeals = await visitsQuery.CountAsync(v => v.VisitOutcome == VisitOutcomeType.ClosedWon);
 
-            // Calculate overall achievement rate
+            // Calculate overall achievement rate (allows > 100%, never capped)
             double rate = 0;
             int count = 0;
-            if (t.TargetNewSchools > 0) { rate += Math.Min(100.0, (actualNewSchools / (double)t.TargetNewSchools) * 100); count++; }
-            if (t.TargetVisits > 0) { rate += Math.Min(100.0, (actualVisits / (double)t.TargetVisits) * 100); count++; }
-            if (t.TargetDecisionMakersReached > 0) { rate += Math.Min(100.0, (actualDecisionMakers / (double)t.TargetDecisionMakersReached) * 100); count++; }
-            if (t.TargetDemosScheduled > 0) { rate += Math.Min(100.0, (actualDemos / (double)t.TargetDemosScheduled) * 100); count++; }
-            if (t.TargetProposalsRequested > 0) { rate += Math.Min(100.0, (actualProposals / (double)t.TargetProposalsRequested) * 100); count++; }
-            if (t.TargetClosedDeals > 0) { rate += Math.Min(100.0, (actualDeals / (double)t.TargetClosedDeals) * 100); count++; }
+            if (t.TargetNewSchools > 0) { rate += ((double)actualNewSchools / t.TargetNewSchools) * 100; count++; }
+            if (t.TargetVisits > 0) { rate += ((double)actualVisits / t.TargetVisits) * 100; count++; }
+            if (t.TargetDecisionMakersReached > 0) { rate += ((double)actualDecisionMakers / t.TargetDecisionMakersReached) * 100; count++; }
+            if (t.TargetDemosScheduled > 0) { rate += ((double)actualDemos / t.TargetDemosScheduled) * 100; count++; }
+            if (t.TargetProposalsRequested > 0) { rate += ((double)actualProposals / t.TargetProposalsRequested) * 100; count++; }
+            if (t.TargetClosedDeals > 0) { rate += ((double)actualDeals / t.TargetClosedDeals) * 100; count++; }
 
             double avgRate = count > 0 ? Math.Round(rate / count, 1) : 0;
 
@@ -164,20 +164,93 @@ public class SalesTargetService : ISalesTargetService
             return ApiResponse<SalesTargetDto>.Fail("Only administrators or managers can set sales targets.");
         }
 
+        // Support Team-Wide Target bulk setting
+        if (request.IsTeamTarget || !request.UserId.HasValue || request.UserId == Guid.Empty)
+        {
+            var reps = await _db.Users
+                .Where(u => u.IsActive && u.UserRoles.Any(ur => ur.Role.Name == UserRoleType.SalesRepresentative.ToString() || ur.Role.Name == UserRoleType.SalesManager.ToString()))
+                .ToListAsync();
+
+            if (!reps.Any())
+            {
+                var curUser = await _db.Users.FirstOrDefaultAsync(u => u.Id == _currentUser.UserId);
+                if (curUser != null) reps.Add(curUser);
+            }
+
+            SalesTarget? lastTarget = null;
+            foreach (var rep in reps)
+            {
+                var existingRepTarget = await _db.SalesTargets.FirstOrDefaultAsync(t =>
+                    t.UserId == rep.Id &&
+                    t.PeriodType == request.PeriodType &&
+                    t.PeriodYear == request.PeriodYear &&
+                    t.PeriodNumber == request.PeriodNumber);
+
+                if (existingRepTarget != null)
+                {
+                    existingRepTarget.TargetNewSchools = request.TargetNewSchools;
+                    existingRepTarget.TargetVisits = request.TargetVisits;
+                    existingRepTarget.TargetDecisionMakersReached = request.TargetDecisionMakersReached;
+                    existingRepTarget.TargetDemosScheduled = request.TargetDemosScheduled;
+                    existingRepTarget.TargetProposalsRequested = request.TargetProposalsRequested;
+                    existingRepTarget.TargetClosedDeals = request.TargetClosedDeals;
+                    existingRepTarget.Notes = request.Notes?.Trim();
+                    existingRepTarget.UpdatedAtUtc = DateTime.UtcNow;
+                    lastTarget = existingRepTarget;
+                }
+                else
+                {
+                    var newT = new SalesTarget
+                    {
+                        UserId = rep.Id,
+                        PeriodType = request.PeriodType,
+                        PeriodYear = request.PeriodYear,
+                        PeriodNumber = request.PeriodNumber,
+                        TargetNewSchools = request.TargetNewSchools,
+                        TargetVisits = request.TargetVisits,
+                        TargetDecisionMakersReached = request.TargetDecisionMakersReached,
+                        TargetDemosScheduled = request.TargetDemosScheduled,
+                        TargetProposalsRequested = request.TargetProposalsRequested,
+                        TargetClosedDeals = request.TargetClosedDeals,
+                        Notes = request.Notes?.Trim(),
+                        CreatedByUserId = _currentUser.UserId ?? Guid.Empty
+                    };
+                    _db.SalesTargets.Add(newT);
+                    lastTarget = newT;
+                }
+            }
+
+            await _db.SaveChangesAsync();
+            return lastTarget != null ? await GetTargetByIdAsync(lastTarget.Id) : ApiResponse<SalesTargetDto>.Ok(new SalesTargetDto());
+        }
+
+        // Individual representative target upsert
+        var targetUserId = request.UserId.Value;
         var existing = await _db.SalesTargets.FirstOrDefaultAsync(t =>
-            t.UserId == request.UserId &&
+            t.UserId == targetUserId &&
             t.PeriodType == request.PeriodType &&
             t.PeriodYear == request.PeriodYear &&
             t.PeriodNumber == request.PeriodNumber);
 
         if (existing != null)
         {
-            return ApiResponse<SalesTargetDto>.Fail("A target already exists for this representative and period.");
+            existing.TargetNewSchools = request.TargetNewSchools;
+            existing.TargetVisits = request.TargetVisits;
+            existing.TargetDecisionMakersReached = request.TargetDecisionMakersReached;
+            existing.TargetDemosScheduled = request.TargetDemosScheduled;
+            existing.TargetProposalsRequested = request.TargetProposalsRequested;
+            existing.TargetClosedDeals = request.TargetClosedDeals;
+            existing.Notes = request.Notes?.Trim();
+            existing.UpdatedAtUtc = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            await _audit.LogAsync("UpdateSalesTarget", "SalesTarget", existing.Id.ToString(), new { existing.UserId, existing.PeriodYear, existing.PeriodNumber });
+            return await GetTargetByIdAsync(existing.Id);
         }
 
         var target = new SalesTarget
         {
-            UserId = request.UserId,
+            UserId = targetUserId,
             PeriodType = request.PeriodType,
             PeriodYear = request.PeriodYear,
             PeriodNumber = request.PeriodNumber,

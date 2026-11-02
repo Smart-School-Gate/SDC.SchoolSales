@@ -90,6 +90,8 @@ export interface SchoolDto {
   source: LeadSource;
   salesStatus: SalesStatus;
   generalNotes?: string;
+  intelligenceProfileJson?: string;
+  discoveryAnswersJson?: string;
   createdByUserId: string;
   createdByUserName?: string;
   assignedToUserId?: string;
@@ -380,4 +382,137 @@ export interface PerformanceReportDto {
   totalProposalsRequested: number;
   totalClosedDeals: number;
   rows: RepPerformanceDto[];
+}
+
+export type FactVerificationStatus = 'VERIFIED' | 'PUBLICLY_FOUND' | 'NEEDS_CONFIRMATION' | 'SALES_HYPOTHESIS' | 'CONFLICTING' | 'NOT_FOUND';
+
+export type CapabilityStatus = 'Available' | 'Partially Available' | 'Not Available' | 'Unknown' | 'Not Applicable';
+
+export interface FactItem<T = string> {
+  value: T;
+  status: FactVerificationStatus;
+  sourceUrl?: string | null;
+  sourceName?: string | null;
+  dateResearched?: string | null;
+  confidenceLevel?: 'High' | 'Medium' | 'Low';
+  notes?: string | null;
+}
+
+export interface CapabilityItem {
+  status: CapabilityStatus;
+  notes?: string;
+}
+
+export interface BusinessOpportunityItem {
+  title: string;
+  type: string;
+  currentSituation: string;
+  verifiedProblem: string;
+  proposedSolution: string;
+  expectedBusinessValue: string;
+  requiredModules: string[];
+  implementationComplexity: 'Low' | 'Medium' | 'High';
+  estimatedTargetAudience: string;
+  evidenceAndSource: string;
+  confidenceLevel: 'High' | 'Medium' | 'Low';
+  status: FactVerificationStatus;
+}
+
+export interface SmsPricingInputs {
+  studentCount?: number;
+  campusesCount?: number;
+  adminsCount?: number;
+  teachersCount?: number;
+  parentsCount?: number;
+  requiredModules?: string[];
+  dataMigrationRequired?: boolean;
+  customizationRequired?: boolean;
+  hostingRequirements?: string;
+  slaRequirement?: string;
+}
+
+export interface AcademyPricingInputs {
+  availableComputers?: number;
+  studentsPerClass?: number;
+  classesCount?: number;
+  instructorsCount?: number;
+  hardwareRequired?: boolean;
+  roboticsKitsRequired?: boolean;
+  courseDurationMonths?: number;
+  certificationTrack?: string;
+}
+
+export interface PricingInputs {
+  smsPricing: SmsPricingInputs;
+  academyPricing: AcademyPricingInputs;
+  pricingStatus: 'ReadyForQuotation' | 'MissingInputs';
+  missingPricingFields?: string[];
+}
+
+export interface DiscoveryQuestionItem {
+  id: string;
+  relatedSection: string;
+  questionAr: string;
+  questionEn: string;
+  whyNeeded: string;
+  expectedAnswerType: string;
+  priority: 'Critical' | 'High' | 'Medium' | 'Low';
+  affectsPricing: boolean;
+}
+
+export interface SchoolIntelligenceProfile {
+  basicInfo: {
+    officialName: FactItem;
+    arabicName: FactItem;
+    brandName: FactItem;
+    schoolType: FactItem;
+    curriculum: FactItem;
+    educationalStages: FactItem;
+    genderPolicy: FactItem;
+    establishedYear: FactItem;
+    studentCount: FactItem;
+    teacherCount: FactItem;
+    adminStaffCount: FactItem;
+    campusCount: FactItem;
+    address: FactItem;
+    city: FactItem;
+    website: FactItem;
+    socialMedia: FactItem;
+    phones: FactItem;
+    emails: FactItem;
+  };
+  smsAssessment: {
+    currentProvider: FactItem;
+    hosting: FactItem;
+    capabilities: Record<string, CapabilityItem>;
+  };
+  academyAssessment: {
+    computerLabAvailable: string;
+    computerCount: string;
+    labSpecifications: string;
+    internetConnectivity: string;
+    existingCurriculum: string;
+    programmingCourses: string;
+    roboticsActivities: string;
+    stemPrograms: string;
+    aiEducation: string;
+    codingClubs: string;
+    extracurricularTech: string;
+    trainingPartners: string;
+    internationalCertifications: string;
+    studentAgeGroups: string;
+    potentialAcademyStudents: string;
+    rootacaOpportunities: string[];
+  };
+  businessOpportunities: BusinessOpportunityItem[];
+  pricingInputs: PricingInputs;
+  discoveryQuestions: DiscoveryQuestionItem[];
+  researchMeta: {
+    researchedBy: string;
+    lastResearchDate: string;
+    verificationStatus: FactVerificationStatus;
+    researchCompletionPercentage: number;
+    verifiedFieldsCount: number;
+    totalFieldsCount: number;
+  };
 }

@@ -70,9 +70,9 @@ export const DashboardPage: React.FC = () => {
       {/* ======================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* Left 8 Cols: Architectural Hero Banner */}
-        <div className="lg:col-span-8 rounded-3xl bg-gradient-to-l from-[#D8E8FC] via-[#EEF5FE] to-[#F8FAFF] border border-blue-100 shadow-sm p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden min-h-[230px]">
+        <div className="lg:col-span-8 rounded-3xl bg-gradient-to-l from-[#D8E8FC] via-[#EEF5FE] to-[#F8FAFF] border border-blue-100 shadow-sm p-5 sm:p-8 flex flex-col justify-between relative overflow-hidden min-h-[220px]">
           {/* School Campus Photo with Soft Vignette Blend */}
-          <div className="absolute inset-y-0 end-0 w-full sm:w-3/5 lg:w-[55%] pointer-events-none overflow-hidden">
+          <div className="absolute inset-y-0 end-0 w-full sm:w-3/5 lg:w-[55%] pointer-events-none overflow-hidden opacity-25 sm:opacity-100">
             <img
               src="https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=1200&q=80"
               alt="School Campus"
@@ -90,20 +90,20 @@ export const DashboardPage: React.FC = () => {
 
           {/* Banner Text Content */}
           <div className="relative z-10 space-y-2 max-w-sm sm:max-w-md">
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-snug">
+            <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight leading-snug">
               {language === 'ar' ? 'إدارة المبيعات التعليمية' : 'Educational Sales Management'}
             </h1>
-            <div className="text-3xl sm:text-4xl font-black text-[#0D6EFD] tracking-tight">
+            <div className="text-2xl sm:text-4xl font-black text-[#0D6EFD] tracking-tight">
               Rootaca
             </div>
             <p className="text-xs sm:text-sm font-bold text-slate-600 pt-1">
               {language === 'ar' ? 'معاً .. نحو مستقبل تعليمي أفضل' : 'Together .. Towards a better educational future'}
             </p>
 
-            <div className="pt-4">
+            <div className="pt-3 sm:pt-4">
               <Link
                 to="/reports"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0D6EFD] hover:bg-[#0b5ed7] text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-500/25 transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-[#0D6EFD] hover:bg-[#0b5ed7] text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-500/25 transition-all cursor-pointer"
               >
                 <TrendingUp className="w-4 h-4" />
                 <span>{language === 'ar' ? 'عرض الأداء التفصيلي' : 'View Detailed Performance'}</span>
@@ -267,10 +267,10 @@ export const DashboardPage: React.FC = () => {
             </div>
 
             {/* Timeframe Segmented Pills */}
-            <div className="flex items-center gap-1 bg-[#F1F5F9] p-1 rounded-full text-[11px] font-bold">
+            <div className="flex items-center gap-1 bg-[#F1F5F9] p-1 rounded-full text-[10px] sm:text-[11px] font-bold">
               <button
                 onClick={() => setTimeframe('month')}
-                className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1 rounded-full transition-all cursor-pointer ${
                   timeframe === 'month' ? 'bg-[#0D6EFD] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -278,7 +278,7 @@ export const DashboardPage: React.FC = () => {
               </button>
               <button
                 onClick={() => setTimeframe('quarter')}
-                className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1 rounded-full transition-all cursor-pointer ${
                   timeframe === 'quarter' ? 'bg-[#0D6EFD] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -286,7 +286,7 @@ export const DashboardPage: React.FC = () => {
               </button>
               <button
                 onClick={() => setTimeframe('year')}
-                className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1 rounded-full transition-all cursor-pointer ${
                   timeframe === 'year' ? 'bg-[#0D6EFD] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -460,7 +460,7 @@ export const DashboardPage: React.FC = () => {
             </div>
 
             {/* Pipeline Stage Labels & Counts */}
-            <div className="space-y-2 text-xs w-full max-w-[140px]">
+            <div className="space-y-2 text-xs w-full sm:max-w-[170px] px-1">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-800 flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#0D6EFD]" />

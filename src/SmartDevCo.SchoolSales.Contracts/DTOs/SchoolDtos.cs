@@ -16,6 +16,8 @@ public class SchoolDto
     public LeadSource Source { get; set; }
     public SalesStatus SalesStatus { get; set; }
     public string? GeneralNotes { get; set; }
+    public string? IntelligenceProfileJson { get; set; }
+    public string? DiscoveryAnswersJson { get; set; }
 
     public Guid CreatedByUserId { get; set; }
     public string? CreatedByUserName { get; set; }
@@ -71,6 +73,18 @@ public class UpdateSchoolRequest
     public LeadSource Source { get; set; }
     public SalesStatus SalesStatus { get; set; }
     public string? GeneralNotes { get; set; }
+    public string? IntelligenceProfileJson { get; set; }
+    public string? DiscoveryAnswersJson { get; set; }
+}
+
+public class UpdateSchoolIntelligenceRequest
+{
+    public string IntelligenceProfileJson { get; set; } = string.Empty;
+}
+
+public class UpdateSchoolDiscoveryAnswersRequest
+{
+    public string DiscoveryAnswersJson { get; set; } = string.Empty;
 }
 
 public class SchoolFilterRequest

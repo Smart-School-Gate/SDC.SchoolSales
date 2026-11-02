@@ -392,7 +392,7 @@ export const SchoolsPage: React.FC = () => {
       {/* ======================================================== */}
       {/* 2. TOP ROW: 3 METRIC KPI CARDS MATCHING REFERENCE IMAGE  */}
       {/* ======================================================== */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
         {/* Card 1: Demo Requests (Right in RTL) */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-100 flex items-center justify-between">
           <div className="space-y-1 text-start">
@@ -403,8 +403,8 @@ export const SchoolsPage: React.FC = () => {
               {demoCount}
             </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-[#E0F7FA] text-[#00B4D8] border border-cyan-100 flex items-center justify-center shrink-0 shadow-2xs">
-            <Presentation className="w-6 h-6" />
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[#E0F7FA] text-[#00B4D8] border border-cyan-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <Presentation className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
@@ -418,8 +418,8 @@ export const SchoolsPage: React.FC = () => {
               {visitedCount}
             </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-[#E0F7FA] text-[#00B4D8] border border-cyan-100 flex items-center justify-center shrink-0 shadow-2xs">
-            <MapPin className="w-6 h-6" />
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[#E0F7FA] text-[#00B4D8] border border-cyan-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
@@ -433,8 +433,8 @@ export const SchoolsPage: React.FC = () => {
               {totalCount || 2}
             </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-[#E0F7FA] text-[#00B4D8] border border-cyan-100 flex items-center justify-center shrink-0 shadow-2xs">
-            <Building2 className="w-6 h-6" />
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[#E0F7FA] text-[#00B4D8] border border-cyan-100 flex items-center justify-center shrink-0 shadow-2xs">
+            <Building2 className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
       </div>
@@ -630,8 +630,8 @@ export const SchoolsPage: React.FC = () => {
       ) : (
         /* Table View */
         <div className="bg-white rounded-2xl shadow-xs border border-slate-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-start">
+          <div className="overflow-x-auto min-w-0">
+            <table className="w-full min-w-[720px] text-xs text-start">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/50 text-slate-700 font-bold">
                   <th className="py-3.5 px-4 text-start">{language === 'ar' ? 'المدرسة' : 'School'}</th>
@@ -737,8 +737,8 @@ export const SchoolsPage: React.FC = () => {
       {/* 5. ADD / CREATE SCHOOL MODAL                             */}
       {/* ======================================================== */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-black text-slate-900">
                 {language === 'ar' ? 'إضافة مدرسة جديدة' : 'Add New School'}
@@ -769,7 +769,7 @@ export const SchoolsPage: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     {language === 'ar' ? 'المدينة *' : 'City *'}
@@ -803,7 +803,7 @@ export const SchoolsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     {language === 'ar' ? 'الهاتف' : 'Phone'}
@@ -834,7 +834,7 @@ export const SchoolsPage: React.FC = () => {
                 <div className="text-xs font-black text-slate-800">
                   {language === 'ar' ? 'بيانات المسؤول / متخذ القرار الأولي' : 'Decision Maker'}
                 </div>
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <input
                     type="text"
                     value={formData.contactName}
@@ -884,8 +884,8 @@ export const SchoolsPage: React.FC = () => {
       {/* 6. REASSIGN SALES REP MODAL                              */}
       {/* ======================================================== */}
       {isReassignModalOpen && reassignTargetSchool && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-black text-slate-900">
                 {language === 'ar' ? 'إسناد المدرسة إلى ممثل مبيعات' : 'Reassign School'}
@@ -956,8 +956,8 @@ export const SchoolsPage: React.FC = () => {
       {/* 7. EDIT SCHOOL MODAL                                     */}
       {/* ======================================================== */}
       {isEditModalOpen && editingSchool && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-black text-slate-900">
                 {language === 'ar' ? 'تعديل بيانات المدرسة' : 'Edit School Details'}
@@ -988,7 +988,7 @@ export const SchoolsPage: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     {language === 'ar' ? 'المدينة *' : 'City *'}
@@ -1023,7 +1023,7 @@ export const SchoolsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     {language === 'ar' ? 'الهاتف' : 'Phone'}

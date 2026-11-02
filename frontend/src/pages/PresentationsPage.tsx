@@ -30,6 +30,18 @@ import { ExecutivePresentationView } from '../components/presentation/ExecutiveP
 import { api } from '../services/api';
 import { PresentationDto, PresentationSlideDto, SlideCategory } from '../types';
 
+// Curated High-Resolution Default Slide Images matching the 8 Core Sales Deck topics
+const DEFAULT_SLIDE_IMAGES = [
+  'https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1000&auto=format&fit=crop', // Slide 1: About Rootaca
+  'https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1000&auto=format&fit=crop', // Slide 2: Challenges
+  'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop', // Slide 3: Smart School
+  'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=1000&auto=format&fit=crop', // Slide 4: Mobile App
+  'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?q=80&w=1000&auto=format&fit=crop', // Slide 5: Academy
+  'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=1000&auto=format&fit=crop', // Slide 6: Security & Cloud
+  'https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=1000&auto=format&fit=crop', // Slide 7: Roadmap
+  'https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1000&auto=format&fit=crop', // Slide 8: Live Demo
+];
+
 // High-Fidelity Custom Artwork adapted to Main Dashboard Light Palette
 const SlideArtIllustration: React.FC<{ index: number; title: string }> = ({ index, title }) => {
   const t = title.toLowerCase();
@@ -37,7 +49,7 @@ const SlideArtIllustration: React.FC<{ index: number; title: string }> = ({ inde
   // Slide 1: Company Overview
   if (index === 0 || t.includes('من نحن') || t.includes('rootaca') || t.includes('smartdevco')) {
     return (
-      <div className="flex items-center justify-between w-full h-24 px-2 py-1 rounded-xl bg-slate-50/70 border border-slate-100">
+      <div className="flex items-center justify-between w-full aspect-[16/10] min-h-[220px] sm:min-h-[235px] md:min-h-[245px] lg:min-h-[255px] xl:min-h-[270px] 2xl:min-h-[285px] px-4 py-3 mb-3 rounded-xl bg-slate-50/70 border border-slate-100">
         <div className="text-right">
           <div className="text-xs font-bold text-slate-600">من نحن — شركة</div>
           <div className="text-sm font-black text-[#00838F] tracking-tight">Rootaca</div>
@@ -60,7 +72,7 @@ const SlideArtIllustration: React.FC<{ index: number; title: string }> = ({ inde
   // Slide 2: Challenges
   if (index === 1 || t.includes('تحديات') || t.includes('مشاكل')) {
     return (
-      <div className="flex items-center justify-between w-full h-24 px-2 py-1 rounded-xl bg-slate-50/70 border border-slate-100">
+      <div className="flex items-center justify-between w-full aspect-[16/10] min-h-[220px] sm:min-h-[235px] md:min-h-[245px] lg:min-h-[255px] xl:min-h-[270px] 2xl:min-h-[285px] px-4 py-3 mb-3 rounded-xl bg-slate-50/70 border border-slate-100">
         <div className="text-right">
           <div className="text-xs font-bold text-slate-800">تحديات إدارة</div>
           <div className="text-xs font-bold text-slate-800">المدارس</div>
@@ -87,7 +99,7 @@ const SlideArtIllustration: React.FC<{ index: number; title: string }> = ({ inde
   // Slide 3: ROOTACA Smart School
   if (index === 2 || t.includes('مدرسة rootaca') || t.includes('smart school')) {
     return (
-      <div className="flex items-center justify-between w-full h-24 px-2 py-1 rounded-xl bg-slate-50/70 border border-slate-100">
+      <div className="flex items-center justify-between w-full aspect-[16/10] min-h-[220px] sm:min-h-[235px] md:min-h-[245px] lg:min-h-[255px] xl:min-h-[270px] 2xl:min-h-[285px] px-4 py-3 mb-3 rounded-xl bg-slate-50/70 border border-slate-100">
         <div className="text-right">
           <div className="text-xs font-black text-slate-800">نظام مدرسة</div>
           <div className="text-xs font-black text-[#00838F]">ROOTACA الذكية</div>
@@ -127,7 +139,7 @@ const SlideArtIllustration: React.FC<{ index: number; title: string }> = ({ inde
   // Slide 4: Parent & Teacher Apps
   if (index === 3 || t.includes('تطبيق') || t.includes('أولياء') || t.includes('معلمين')) {
     return (
-      <div className="flex items-center justify-between w-full h-24 px-2 py-1 rounded-xl bg-slate-50/70 border border-slate-100">
+      <div className="flex items-center justify-between w-full aspect-[16/10] min-h-[220px] sm:min-h-[235px] md:min-h-[245px] lg:min-h-[255px] xl:min-h-[270px] 2xl:min-h-[285px] px-4 py-3 mb-3 rounded-xl bg-slate-50/70 border border-slate-100">
         <div className="text-right">
           <div className="text-xs font-black text-slate-800">تطبيق أولياء</div>
           <div className="text-xs font-black text-slate-800">الأمور</div>
@@ -159,7 +171,7 @@ const SlideArtIllustration: React.FC<{ index: number; title: string }> = ({ inde
   // Slide 5: ROOTACA Academy
   if (index === 4 || t.includes('أكاديمية') || t.includes('academy')) {
     return (
-      <div className="flex items-center justify-between w-full h-24 px-2 py-1 rounded-xl bg-slate-50/70 border border-slate-100">
+      <div className="flex items-center justify-between w-full aspect-[16/10] min-h-[220px] sm:min-h-[235px] md:min-h-[245px] lg:min-h-[255px] xl:min-h-[270px] 2xl:min-h-[285px] px-4 py-3 mb-3 rounded-xl bg-slate-50/70 border border-slate-100">
         <div className="text-right">
           <div className="text-xs font-black text-slate-800">نظام أكاديمية</div>
           <div className="text-xs font-black text-[#00838F]">ROOTACA</div>
@@ -183,7 +195,7 @@ const SlideArtIllustration: React.FC<{ index: number; title: string }> = ({ inde
   // Slide 6: Cloud Security
   if (index === 5 || t.includes('أمن') || t.includes('سحاب') || t.includes('cloud')) {
     return (
-      <div className="flex items-center justify-between w-full h-24 px-2 py-1 rounded-xl bg-slate-50/70 border border-slate-100">
+      <div className="flex items-center justify-between w-full aspect-[16/10] min-h-[220px] sm:min-h-[235px] md:min-h-[245px] lg:min-h-[255px] xl:min-h-[270px] 2xl:min-h-[285px] px-4 py-3 mb-3 rounded-xl bg-slate-50/70 border border-slate-100">
         <div className="text-right">
           <div className="text-xs font-black text-slate-800">أمن وسرية</div>
           <div className="text-xs font-black text-[#00838F]">السحابة</div>
@@ -203,7 +215,7 @@ const SlideArtIllustration: React.FC<{ index: number; title: string }> = ({ inde
   // Slide 7: Digital Transformation Roadmap
   if (index === 6 || t.includes('تحول') || t.includes('خطة') || t.includes('roadmap')) {
     return (
-      <div className="flex items-center justify-between w-full h-24 px-2 py-1 rounded-xl bg-slate-50/70 border border-slate-100">
+      <div className="flex items-center justify-between w-full aspect-[16/10] min-h-[220px] sm:min-h-[235px] md:min-h-[245px] lg:min-h-[255px] xl:min-h-[270px] 2xl:min-h-[285px] px-4 py-3 mb-3 rounded-xl bg-slate-50/70 border border-slate-100">
         <div className="text-right">
           <div className="text-xs font-black text-slate-800">خطة التحول الرقمي</div>
         </div>
@@ -225,7 +237,7 @@ const SlideArtIllustration: React.FC<{ index: number; title: string }> = ({ inde
 
   // Slide 8: Next Steps & Closing
   return (
-    <div className="flex items-center justify-between w-full h-24 px-2 py-1 rounded-xl bg-slate-50/70 border border-slate-100">
+    <div className="flex items-center justify-between w-full aspect-[16/10] min-h-[220px] sm:min-h-[235px] md:min-h-[245px] lg:min-h-[255px] xl:min-h-[270px] 2xl:min-h-[285px] px-4 py-3 mb-3 rounded-xl bg-slate-50/70 border border-slate-100">
       <div className="text-right">
         <div className="text-xs font-black text-slate-800">الخطوة التالية —</div>
         <div className="text-xs font-black text-[#00838F]">موعد العرض التجريبي</div>
@@ -557,34 +569,39 @@ export const PresentationsPage: React.FC = () => {
           </div>
 
           {/* 3-Column Grid of Slide Cards in Light Mode (RTL ordering) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" dir="rtl">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5" dir="rtl">
             {filteredSlides.map((slide, idx) => {
               const isFirst = idx === 0;
               const isSelected = selectedSlideId === slide.id || isFirst;
+              const effectiveImgUrl = slide.imageUrl || DEFAULT_SLIDE_IMAGES[idx % DEFAULT_SLIDE_IMAGES.length];
 
               return (
                 <div
                   key={slide.id}
                   onClick={() => setSelectedSlideId(slide.id)}
-                  className={`bg-white rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 group relative min-h-[220px] cursor-pointer border ${
+                  className={`bg-white rounded-2xl p-4 sm:p-4.5 flex flex-col justify-between transition-all duration-200 group relative min-h-[300px] sm:min-h-[320px] md:min-h-[330px] lg:min-h-[345px] xl:min-h-[360px] cursor-pointer border ${
                     isSelected
                       ? 'border-2 border-[#00B4D8] shadow-md shadow-cyan-500/15'
                       : 'border-slate-200/90 hover:border-cyan-400 shadow-2xs'
                   }`}
                 >
                   {/* Top Illustration or Real Image Area */}
-                  {slide.imageUrl ? (
-                    <div className="w-full h-24 rounded-xl overflow-hidden border border-slate-200/90 bg-slate-100 relative group/img mb-2 shadow-2xs">
+                  {effectiveImgUrl ? (
+                    <div className="w-full aspect-[16/10] min-h-[220px] sm:min-h-[235px] md:min-h-[245px] lg:min-h-[255px] xl:min-h-[270px] 2xl:min-h-[285px] rounded-xl overflow-hidden border border-slate-200/90 bg-slate-100 relative group/img mb-3 shadow-2xs">
                       <img
-                        src={slide.imageUrl}
+                        src={effectiveImgUrl}
                         alt={slide.slideTitleAr}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105"
                         onError={(e) => {
-                          (e.target as HTMLElement).style.display = 'none';
+                          const target = e.target as HTMLImageElement;
+                          const fallback = DEFAULT_SLIDE_IMAGES[idx % DEFAULT_SLIDE_IMAGES.length];
+                          if (target.src !== fallback) {
+                            target.src = fallback;
+                          }
                         }}
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent flex items-end p-2">
-                        <span className="text-[11px] font-bold text-white truncate">
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent flex items-end p-3">
+                        <span className="text-xs sm:text-[13px] font-bold text-white leading-snug drop-shadow-xs line-clamp-2">
                           {slide.slideTitleAr}
                         </span>
                       </div>
@@ -637,7 +654,7 @@ export const PresentationsPage: React.FC = () => {
             {(isSuperAdmin || isSalesManager) && (
               <div
                 onClick={handleOpenAddSlide}
-                className="border-2 border-dashed border-slate-300 hover:border-[#00B4D8] rounded-2xl p-5 flex flex-col items-center justify-between cursor-pointer min-h-[220px] bg-white/60 hover:bg-white text-slate-400 hover:text-[#00B4D8] transition-all group shadow-2xs"
+                className="border-2 border-dashed border-slate-300 hover:border-[#00B4D8] rounded-2xl p-5 flex flex-col items-center justify-between cursor-pointer min-h-[300px] sm:min-h-[320px] md:min-h-[330px] lg:min-h-[345px] xl:min-h-[360px] bg-white/60 hover:bg-white text-slate-400 hover:text-[#00B4D8] transition-all group shadow-2xs"
               >
                 <div className="flex-1 flex flex-col items-center justify-center">
                   <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-cyan-50 flex items-center justify-center mb-2 transition-colors">
@@ -664,8 +681,8 @@ export const PresentationsPage: React.FC = () => {
       {/* 3. ADD / EDIT SLIDE MODAL IN LIGHT DASHBOARD PALETTE     */}
       {/* ======================================================== */}
       {isSlideModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto" dir="rtl">
-          <div className="bg-white border border-slate-200 rounded-3xl max-w-xl w-full p-6 shadow-2xl text-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto" dir="rtl">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl text-slate-800 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-black text-slate-900">
                 {editingSlide ? 'تعديل الشريحة' : 'إضافة شريحة جديدة'}

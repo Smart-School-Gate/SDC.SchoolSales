@@ -29,6 +29,8 @@ public interface ISchoolService
     Task<ApiResponse<SchoolDetailDto>> GetSchoolByIdAsync(Guid id);
     Task<ApiResponse<SchoolDto>> CreateSchoolAsync(CreateSchoolRequest request);
     Task<ApiResponse<SchoolDto>> UpdateSchoolAsync(Guid id, UpdateSchoolRequest request);
+    Task<ApiResponse<SchoolDetailDto>> UpdateSchoolIntelligenceAsync(Guid id, string intelligenceJson);
+    Task<ApiResponse<SchoolDetailDto>> UpdateSchoolDiscoveryAnswersAsync(Guid id, string answersJson);
     Task<ApiResponse<bool>> DeleteSchoolAsync(Guid id);
 }
 
@@ -86,6 +88,7 @@ public interface IFollowUpService
 public interface ISalesTargetService
 {
     Task<ApiResponse<List<SalesTargetDto>>> GetTargetsAsync(int? year = null, PeriodType? periodType = null, Guid? userId = null);
+    Task<ApiResponse<SalesPerformanceDashboardDto>> GetSalesPerformanceDashboardAsync(int? year = null, int? month = null, Guid? repId = null, ProductInterest? product = null);
     Task<ApiResponse<SalesTargetDto>> GetTargetByIdAsync(Guid id);
     Task<ApiResponse<SalesTargetDto>> CreateTargetAsync(CreateSalesTargetRequest request);
     Task<ApiResponse<SalesTargetDto>> UpdateTargetAsync(Guid id, UpdateSalesTargetRequest request);

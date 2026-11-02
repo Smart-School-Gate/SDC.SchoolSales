@@ -11,7 +11,8 @@ import {
   BarChart3,
   CheckSquare,
   Rocket,
-  LogOut
+  LogOut,
+  X
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
@@ -57,18 +58,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onCloseMobile }) => {
         className={`fixed top-0 bottom-0 z-50 flex flex-col w-64 bg-[#0B1528] text-slate-300 shadow-2xl transition-transform duration-200 ${positionClasses}`}
       >
         {/* Brand Header */}
-        <div className="px-6 py-5 flex items-center justify-between border-b border-slate-800/60">
+        <div className="px-5 py-4 sm:px-6 sm:py-5 flex items-center justify-between border-b border-slate-800/60">
           <div className="flex items-center gap-3">
             <img 
               src="/rootaca-logo.png" 
               alt="Rootaca" 
-              className="w-10 h-10 rounded-xl object-cover shadow-lg shadow-blue-500/30 shrink-0" 
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-cover shadow-lg shadow-blue-500/30 shrink-0" 
             />
             <div className="flex flex-col min-w-0">
               <span className="font-black text-white text-base tracking-tight leading-tight">Rootaca</span>
               <span className="text-[11px] font-medium text-slate-400 mt-0.5">School Management</span>
             </div>
           </div>
+
+          {/* Close button for mobile screens */}
+          <button
+            onClick={onCloseMobile}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 lg:hidden cursor-pointer"
+            aria-label="Close Sidebar"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation Links with Cyan Highlight matching Screenshots */}

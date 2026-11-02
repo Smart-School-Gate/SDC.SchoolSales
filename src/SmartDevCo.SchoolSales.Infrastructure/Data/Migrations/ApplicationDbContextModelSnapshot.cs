@@ -712,6 +712,9 @@ namespace SmartDevCo.SchoolSales.Infrastructure.Data.Migrations
                     b.Property<Guid>("CreatedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("DiscoveryAnswersJson")
+                        .HasColumnType("text");
+
                     b.Property<string>("District")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -721,6 +724,9 @@ namespace SmartDevCo.SchoolSales.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(256)");
 
                     b.Property<string>("GeneralNotes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("IntelligenceProfileJson")
                         .HasColumnType("text");
 
                     b.Property<string>("Name")

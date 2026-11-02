@@ -179,8 +179,8 @@ export const SalesTeamPage: React.FC = () => {
         </div>
 
         {/* Users Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-start">
+        <div className="overflow-x-auto min-w-0">
+          <table className="w-full min-w-[750px] text-xs text-start">
             <thead>
               <tr className="bg-[#F8FAFC] text-slate-600 font-bold border-b border-slate-200/80">
                 <th className="py-3.5 px-4 text-start">{language === 'ar' ? 'المستخدم' : 'User'}</th>
@@ -329,8 +329,8 @@ export const SalesTeamPage: React.FC = () => {
 
       {/* Add User Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <Users className="w-5 h-5 text-[#00B4D8]" />

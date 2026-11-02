@@ -24,7 +24,10 @@ import {
   ProductInterest
 } from '../types';
 
-const API_BASE = '/api/v1';
+const PRODUCTION_API_BASE = 'https://rootaca-sales-550287486754.me-central1.run.app/api/v1';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+  || (import.meta.env.PROD ? PRODUCTION_API_BASE : '/api/v1');
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const token = localStorage.getItem('token');
@@ -101,6 +104,8 @@ export const api = {
   getSchoolById: (id: string) => request<SchoolDetailDto>(`/schools/${id}`),
   createSchool: (body: any) => request<SchoolDto>('/schools', { method: 'POST', body: JSON.stringify(body) }),
   updateSchool: (id: string, body: any) => request<SchoolDto>(`/schools/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  updateSchoolIntelligence: (id: string, intelligenceJson: string) => request<SchoolDetailDto>(`/schools/${id}/intelligence`, { method: 'PUT', body: JSON.stringify({ intelligenceJson }) }),
+  updateSchoolDiscoveryAnswers: (id: string, discoveryAnswersJson: string) => request<SchoolDetailDto>(`/schools/${id}/discovery-answers`, { method: 'PUT', body: JSON.stringify({ discoveryAnswersJson }) }),
   deleteSchool: (id: string) => request<boolean>(`/schools/${id}`, { method: 'DELETE' }),
 
   // Contacts

@@ -137,9 +137,9 @@ export const ReportsPage: React.FC = () => {
       {/* ======================================================== */}
       {/* 2. FILTER DROPDOWNS MATCHING MAIN DASHBOARD PALETTE      */}
       {/* ======================================================== */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
         {/* Representative Filter */}
-        <div className="relative min-w-[200px]">
+        <div className="relative flex-1 sm:flex-none min-w-[170px]">
           <select
             value={selectedRep}
             onChange={e => setSelectedRep(e.target.value)}
@@ -154,7 +154,7 @@ export const ReportsPage: React.FC = () => {
         </div>
 
         {/* Product Filter */}
-        <div className="relative min-w-[160px]">
+        <div className="relative flex-1 sm:flex-none min-w-[150px]">
           <select
             value={selectedProduct}
             onChange={e => setSelectedProduct(e.target.value)}
@@ -169,7 +169,7 @@ export const ReportsPage: React.FC = () => {
         </div>
 
         {/* Stage Filter */}
-        <div className="relative min-w-[160px]">
+        <div className="relative flex-1 sm:flex-none min-w-[150px]">
           <select
             value={selectedStage}
             onChange={e => setSelectedStage(e.target.value)}
@@ -188,7 +188,7 @@ export const ReportsPage: React.FC = () => {
       {/* ======================================================== */}
       {/* 3. 5 KPI CARDS MATCHING MAIN DASHBOARD PALETTE           */}
       {/* ======================================================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* Card 1: Won Deals (Right in RTL) */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex flex-col justify-between min-h-[135px] hover:shadow-xs transition-shadow">
           <div className="flex items-center justify-between text-xs font-bold text-slate-700">
@@ -305,8 +305,8 @@ export const ReportsPage: React.FC = () => {
             {t('common.empty')}
           </div>
         ) : (
-          <div className="overflow-x-auto p-2">
-            <table className="w-full text-xs text-start">
+          <div className="overflow-x-auto p-2 min-w-0">
+            <table className="w-full min-w-[720px] text-xs text-start">
               <thead>
                 <tr className="text-slate-600 font-bold border-b border-slate-100 bg-slate-50/70">
                   <th className="py-3.5 px-4 text-start">{language === 'ar' ? 'المندوب / الفريق' : 'Representative'}</th>

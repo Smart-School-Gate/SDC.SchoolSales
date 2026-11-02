@@ -87,7 +87,42 @@ export const ExecutivePresentationView: React.FC<ExecutivePresentationViewProps>
   const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(true);
+  const [showMobileContents, setShowMobileContents] = useState(false);
+  const [mobileActiveCard, setMobileActiveCard] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Reset active card on slide change
+  useEffect(() => {
+    setMobileActiveCard(0);
+  }, [currentIndex]);
+
+  // Mobile swipe gestures
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStart === null || touchEnd === null) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+    if (isLeftSwipe) {
+      if (dir === 'rtl') prevSlide();
+      else nextSlide();
+    }
+    if (isRightSwipe) {
+      if (dir === 'rtl') nextSlide();
+      else prevSlide();
+    }
+  };
 
   // Timer counter
   useEffect(() => {
@@ -140,8 +175,8 @@ export const ExecutivePresentationView: React.FC<ExecutivePresentationViewProps>
       numberEn: '01',
       shortTitleAr: 'من نحن — Rootaca',
       shortTitleEn: 'About Rootaca',
-      heroImage: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000&auto=format&fit=crop',
-      thumbnailImage: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=200&auto=format&fit=crop',
+      heroImage: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1000&auto=format&fit=crop',
+      thumbnailImage: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=200&auto=format&fit=crop',
       cards: [
         {
           title: lang === 'ar' ? 'أهدافنا' : 'Our Goals',
@@ -465,36 +500,46 @@ export const ExecutivePresentationView: React.FC<ExecutivePresentationViewProps>
       {/* ======================================================== */}
       {/* 1. TOP HEADER (SaaS Light Dashboard Header)              */}
       {/* ======================================================== */}
-      <header className="h-16 px-6 bg-white/95 backdrop-blur-md border-b border-slate-200/90 flex items-center justify-between shrink-0 shadow-2xs z-30">
-        <div className="flex items-center gap-3.5">
+      <header className="h-14 sm:h-16 px-3 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200/90 flex items-center justify-between shrink-0 shadow-2xs z-30">
+        <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
           <img
             src="/rootaca-logo.png"
             alt="Rootaca"
-            className="w-8 h-8 rounded-xl object-contain shadow-xs border border-slate-200"
+            className="w-8 h-8 rounded-xl object-contain shadow-xs border border-slate-200 shrink-0"
           />
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-900 text-sm tracking-tight">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-bold text-slate-900 text-sm tracking-tight shrink-0">
               Rootaca
             </span>
-            <span className="text-slate-300">|</span>
-            <span className="text-xs font-semibold text-slate-500 hidden sm:inline">
+            <span className="text-slate-300 hidden sm:inline">|</span>
+            <span className="text-xs font-semibold text-slate-500 hidden md:inline truncate">
               {lang === 'ar' ? 'العرض التقديمي التنفيذي للمدارس' : 'Executive School Sales Deck'}
             </span>
           </div>
 
           {schoolName && (
-            <span className="text-xs font-bold text-cyan-800 bg-cyan-50 border border-cyan-200/90 px-3 py-1 rounded-full ms-2 shadow-2xs">
+            <span className="text-[11px] sm:text-xs font-bold text-cyan-800 bg-cyan-50 border border-cyan-200/90 px-2.5 py-0.5 rounded-full ms-1 shadow-2xs truncate max-w-[120px] sm:max-w-[200px]">
               {schoolName}
             </span>
           )}
         </div>
 
         {/* Top Controls */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* Mobile Contents Toggle */}
+          <button
+            onClick={() => setShowMobileContents(prev => !prev)}
+            className="flex lg:hidden items-center gap-1 px-2.5 py-1.5 bg-cyan-50 text-cyan-800 border border-cyan-200 rounded-xl text-xs font-bold cursor-pointer"
+            title={lang === 'ar' ? 'قائمة الشرائح' : 'Slide Contents'}
+          >
+            <Layers className="w-3.5 h-3.5 text-cyan-600" />
+            <span className="hidden xs:inline">{lang === 'ar' ? 'المحتويات' : 'Slides'}</span>
+          </button>
+
           {/* Presentation Timer */}
           <div
             onClick={() => setIsTimerRunning(prev => !prev)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-700 cursor-pointer shadow-2xs transition"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-700 cursor-pointer shadow-2xs transition"
             title={lang === 'ar' ? 'إيقاف / تشغيل مؤقت الاجتماع' : 'Pause / Resume Timer'}
           >
             <Timer className="w-3.5 h-3.5 text-cyan-600" />
@@ -504,7 +549,7 @@ export const ExecutivePresentationView: React.FC<ExecutivePresentationViewProps>
           {/* Language Switcher */}
           <button
             onClick={() => setLang(l => (l === 'ar' ? 'en' : 'ar'))}
-            className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer shadow-2xs transition"
+            className="px-2.5 sm:px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer shadow-2xs transition"
             title="Toggle Language"
           >
             {lang === 'ar' ? 'EN' : 'عربي'}
@@ -513,7 +558,7 @@ export const ExecutivePresentationView: React.FC<ExecutivePresentationViewProps>
           {/* Fullscreen Button */}
           <button
             onClick={toggleFullscreen}
-            className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-700 cursor-pointer shadow-2xs transition"
+            className="p-1.5 sm:p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-700 cursor-pointer shadow-2xs transition"
             title={lang === 'ar' ? 'وضع ملء الشاشة' : 'Fullscreen'}
           >
             {isBrowserFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -522,11 +567,11 @@ export const ExecutivePresentationView: React.FC<ExecutivePresentationViewProps>
           {/* Close / Exit Button */}
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold cursor-pointer transition shadow-2xs"
+            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold cursor-pointer transition shadow-2xs"
             title={lang === 'ar' ? 'إنهاء العرض (ESC)' : 'Exit (ESC)'}
           >
             <X className="w-4 h-4" />
-            <span>{lang === 'ar' ? 'إغلاق' : 'Close'}</span>
+            <span className="hidden xs:inline sm:inline">{lang === 'ar' ? 'إغلاق' : 'Close'}</span>
           </button>
         </div>
       </header>
@@ -534,108 +579,223 @@ export const ExecutivePresentationView: React.FC<ExecutivePresentationViewProps>
       {/* ======================================================== */}
       {/* 2. MAIN PRESENTATION VIEWPORT (Canvas + Sidebar)        */}
       {/* ======================================================== */}
-      <main className="flex-1 p-3 sm:p-5 lg:p-6 flex gap-4 lg:gap-5 overflow-hidden items-stretch relative">
+      <main 
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="flex-1 p-2 sm:p-4 lg:p-6 flex gap-4 lg:gap-5 overflow-hidden items-stretch relative min-h-0"
+      >
         
         {/* ------------------------------------------------------ */}
         {/* MAIN SLIDE CANVAS (Center Stage - Expanded)            */}
         {/* ------------------------------------------------------ */}
-        <section className="flex-1 bg-white rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/60 p-5 sm:p-7 lg:p-8 flex flex-col justify-between relative overflow-hidden transition-all duration-300">
+        <section className="flex-1 bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/60 p-3.5 sm:p-6 lg:p-8 flex flex-col justify-start md:justify-between relative overflow-y-auto transition-all duration-300 pb-20 md:pb-8">
           
-          {/* TOP SECTION: Expanded Hero Visual & Title (Takes most space) */}
-          <div className="flex-1 flex flex-col md:flex-row items-stretch justify-between gap-5 sm:gap-7 pb-3 min-h-0">
+          {/* TOP SECTION: Title & Subtitle + Hero Visual */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-6 pb-2 min-h-0 shrink-0">
             
             {/* Title & Subtitle column */}
-            <div className="w-full md:w-1/3 lg:w-5/12 flex flex-col justify-center space-y-3 shrink-0">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-cyan-50 border border-cyan-200/80 text-cyan-800 text-xs font-bold font-mono w-fit">
+            <div className="w-full md:w-1/3 lg:w-5/12 flex flex-col justify-center space-y-1.5 sm:space-y-3 shrink-0">
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-lg bg-cyan-50 border border-cyan-200/80 text-cyan-800 text-[11px] sm:text-xs font-bold font-mono w-fit">
                 <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
                 <span>{currentSlide.tag}</span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+              <h1 className="text-xl sm:text-3xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight">
                 {currentSlide.title}
               </h1>
 
-              <p className="text-sm sm:text-base text-slate-500 font-medium leading-relaxed">
+              <p className="text-xs sm:text-sm lg:text-base text-slate-500 font-medium leading-relaxed line-clamp-2 md:line-clamp-none">
                 {currentSlide.subtitle}
               </p>
             </div>
 
-            {/* EXPANDED HERO IMAGE: Takes up all the remaining width and height! */}
-            <div className="flex-1 w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200 shadow-md bg-slate-900 relative group min-h-[250px] sm:min-h-[290px] lg:min-h-[340px]">
+            {/* EXPANDED HERO IMAGE: Never squished or covered on mobile! */}
+            <div className="w-full md:flex-1 aspect-[16/9] sm:aspect-video md:aspect-auto md:min-h-[260px] lg:min-h-[340px] rounded-xl sm:rounded-2xl lg:rounded-3xl overflow-hidden border border-slate-200 shadow-md bg-slate-900 relative group shrink-0">
               <img
                 src={currentSlide.heroImage}
                 alt={currentSlide.title}
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
+                  const target = e.target as HTMLImageElement;
+                  const fallback = 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1000&auto=format&fit=crop';
+                  if (target.src !== fallback) {
+                    target.src = fallback;
+                  }
                 }}
               />
               {/* Overlay Glass Badge */}
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent flex items-end p-4 sm:p-5">
-                <div className="flex items-center justify-between w-full text-white text-xs">
-                  <span className="font-bold flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-sm sm:text-base font-bold">Rootaca Live Platform</span>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent flex items-end p-2.5 sm:p-4">
+                <div className="flex items-center justify-between w-full text-white text-[10px] sm:text-xs">
+                  <span className="font-bold flex items-center gap-1.5 sm:gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-[11px] sm:text-sm font-bold">Rootaca Live Platform</span>
                   </span>
-                  <span className="text-xs font-mono bg-cyan-500/40 text-cyan-100 px-3 py-1 rounded-lg border border-cyan-400/50 backdrop-blur-xs font-semibold">
-                    2026 Enterprise Ready
+                  <span className="text-[10px] sm:text-xs font-mono bg-cyan-500/40 text-cyan-100 px-2 sm:px-2.5 py-0.5 rounded-md border border-cyan-400/50 backdrop-blur-xs font-semibold">
+                    2026 Ready
                   </span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* BOTTOM SECTION: 3 Compact Cards (Reduced to half height) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4 shrink-0 pt-2">
-            {currentSlide.cards.map((card, cIdx) => {
-              const Icon = card.icon;
-              return (
-                <div
-                  key={cIdx}
-                  className="rounded-2xl bg-gradient-to-b from-white to-[#F8FAFC] border border-slate-200/90 hover:border-cyan-400 shadow-xs hover:shadow-md transition-all duration-300 p-3.5 sm:p-4 flex flex-col justify-between group relative overflow-hidden"
-                >
-                  {/* Compact Header: Icon badge + Title + Mini Tag */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-cyan-500 text-white flex items-center justify-center shadow-sm shadow-cyan-500/30 group-hover:scale-105 transition-transform shrink-0">
-                          <Icon className="w-4 h-4" />
+          {/* BOTTOM SECTION: 3 Cards */}
+          <div className="mt-2.5 pt-1.5 shrink-0">
+            {/* ---------------------------------------------------- */}
+            {/* MOBILE ONLY: Ultra-Clean Executive Interactive Cards */}
+            {/* ---------------------------------------------------- */}
+            <div className="flex md:hidden flex-col gap-2.5">
+              {/* Card Switcher Pills */}
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl border border-slate-200/80">
+                {currentSlide.cards.map((card, cIdx) => (
+                  <button
+                    key={cIdx}
+                    onClick={() => setMobileActiveCard(cIdx)}
+                    className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all text-center truncate cursor-pointer ${
+                      mobileActiveCard === cIdx
+                        ? 'bg-white text-cyan-800 shadow-xs border border-slate-200'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {card.title}
+                  </button>
+                ))}
+              </div>
+
+              {/* Active Mobile Card Display */}
+              {(() => {
+                const activeCard = currentSlide.cards[mobileActiveCard] || currentSlide.cards[0];
+                const Icon = activeCard.icon;
+                return (
+                  <div className="rounded-2xl bg-gradient-to-b from-white to-[#F8FAFC] border-2 border-cyan-500/30 p-4 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-[#00B4D8] text-white flex items-center justify-center shadow-sm shrink-0">
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-base font-black text-slate-900 leading-tight truncate">
+                              {activeCard.title}
+                            </h3>
+                            <span className="text-[10px] font-mono font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded border border-cyan-200 inline-block mt-0.5">
+                              {activeCard.badge || `#0${mobileActiveCard + 1}`}
+                            </span>
+                          </div>
                         </div>
-                        <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight group-hover:text-cyan-700 transition leading-snug">
-                          {card.title}
-                        </h3>
+
+                        {/* Navigation dots */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {currentSlide.cards.map((_, dotIdx) => (
+                            <button
+                              key={dotIdx}
+                              onClick={() => setMobileActiveCard(dotIdx)}
+                              className={`h-2 rounded-full transition-all cursor-pointer ${
+                                mobileActiveCard === dotIdx ? 'w-4 bg-cyan-500' : 'w-2 bg-slate-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
                       </div>
 
-                      <span className="text-[10px] font-mono font-bold bg-cyan-50 text-cyan-800 px-2 py-0.5 rounded border border-cyan-200/80 shrink-0">
-                        {card.badge || `#0${cIdx + 1}`}
-                      </span>
+                      <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium mt-2">
+                        {activeCard.desc}
+                      </p>
                     </div>
 
-                    {/* Compact Description */}
-                    <p className="text-xs sm:text-[13px] text-slate-600 leading-relaxed font-medium line-clamp-2 mt-1">
-                      {card.desc}
-                    </p>
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-semibold">
+                      <span className="flex items-center gap-1 text-emerald-600 font-bold">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{lang === 'ar' ? 'معتمد للمدارس' : 'School Certified'}</span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setMobileActiveCard(prev => Math.max(0, prev - 1))}
+                          disabled={mobileActiveCard === 0}
+                          className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 disabled:opacity-30 text-slate-700 font-bold text-xs cursor-pointer shadow-2xs"
+                        >
+                          {dir === 'rtl' ? '›' : '‹'}
+                        </button>
+                        <button
+                          onClick={() => setMobileActiveCard(prev => Math.min(currentSlide.cards.length - 1, prev + 1))}
+                          disabled={mobileActiveCard === currentSlide.cards.length - 1}
+                          className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 disabled:opacity-30 text-slate-700 font-bold text-xs cursor-pointer shadow-2xs"
+                        >
+                          {dir === 'rtl' ? '‹' : '›'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
+                );
+              })()}
+            </div>
 
-                  {/* Compact Bottom Verification */}
-                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-400">
-                    <span className="flex items-center gap-1 text-emerald-600 font-bold">
-                      <Check className="w-3.5 h-3.5" />
-                      <span>{lang === 'ar' ? 'معتمد للمدارس' : 'School Certified'}</span>
-                    </span>
-                    <span className="font-mono text-[10px]">Rootaca Cloud</span>
+            {/* ---------------------------------------------------- */}
+            {/* DESKTOP ONLY: Full 3-Column Grid                     */}
+            {/* ---------------------------------------------------- */}
+            <div className="hidden md:grid md:grid-cols-3 gap-3 lg:gap-4 pb-1">
+              {currentSlide.cards.map((card, cIdx) => {
+                const Icon = card.icon;
+                return (
+                  <div
+                    key={cIdx}
+                    className="rounded-2xl bg-gradient-to-b from-white to-[#F8FAFC] border border-slate-200/90 hover:border-cyan-400 shadow-xs hover:shadow-md transition-all duration-300 p-3.5 sm:p-4 flex flex-col justify-between group relative overflow-hidden"
+                  >
+                    {/* Header */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-cyan-500 text-white flex items-center justify-center shadow-sm shadow-cyan-500/30 group-hover:scale-105 transition-transform shrink-0">
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight group-hover:text-cyan-700 transition leading-snug">
+                            {card.title}
+                          </h3>
+                        </div>
+
+                        <span className="text-[10px] font-mono font-bold bg-cyan-50 text-cyan-800 px-2 py-0.5 rounded border border-cyan-200/80 shrink-0">
+                          {card.badge || `#0${cIdx + 1}`}
+                        </span>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-xs text-slate-600 leading-relaxed font-medium line-clamp-2 mt-1">
+                        {card.desc}
+                      </p>
+                    </div>
+
+                    {/* Bottom verification */}
+                    <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] font-semibold text-slate-400">
+                      <span className="flex items-center gap-1 text-emerald-600 font-bold">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{lang === 'ar' ? 'معتمد للمدارس' : 'School Certified'}</span>
+                      </span>
+                      <span className="font-mono text-[10px]">Rootaca Cloud</span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </section>
 
         {/* ------------------------------------------------------ */}
         {/* RIGHT SIDEBAR: CONTENTS (المحتويات - 8 شرائح)          */}
+        {/* Desktop: standard aside, Mobile: overlay drawer       */}
         {/* ------------------------------------------------------ */}
-        <aside className="w-72 lg:w-80 bg-white rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/60 p-4 sm:p-5 flex flex-col justify-between shrink-0 overflow-hidden">
-          
+        {/* Mobile Backdrop */}
+        {showMobileContents && (
+          <div
+            className="fixed inset-0 bg-slate-900/60 z-40 lg:hidden backdrop-blur-xs"
+            onClick={() => setShowMobileContents(false)}
+          />
+        )}
+
+        <aside
+          className={`fixed inset-y-0 ${dir === 'rtl' ? 'start-0' : 'end-0'} z-50 w-72 sm:w-80 bg-white shadow-2xl p-4 flex flex-col justify-between transition-transform duration-200 lg:static lg:z-auto lg:w-72 lg:w-80 lg:rounded-3xl lg:border lg:border-slate-200/90 lg:shadow-xl lg:shadow-slate-200/60 lg:p-4 sm:lg:p-5 lg:translate-x-0 ${
+            showMobileContents ? 'translate-x-0' : 'hidden lg:flex'
+          }`}
+        >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -646,9 +806,18 @@ export const ExecutivePresentationView: React.FC<ExecutivePresentationViewProps>
                   : `Contents (${masterSlides.length} Slides)`}
               </span>
             </h2>
-            <span className="text-[10px] font-mono font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-md border border-cyan-200">
-              Deck 2026
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-mono font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-md border border-cyan-200">
+                Deck 2026
+              </span>
+              <button
+                onClick={() => setShowMobileContents(false)}
+                className="p-1 text-slate-400 hover:text-slate-700 lg:hidden cursor-pointer"
+                aria-label="Close contents"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Slide List with Real Thumbnails matching reference */}
@@ -658,7 +827,10 @@ export const ExecutivePresentationView: React.FC<ExecutivePresentationViewProps>
               return (
                 <button
                   key={slide.id}
-                  onClick={() => setCurrentIndex(sIdx)}
+                  onClick={() => {
+                    setCurrentIndex(sIdx);
+                    setShowMobileContents(false);
+                  }}
                   className={`w-full text-start p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
                     isActive
                       ? 'bg-cyan-50/90 border-cyan-500 text-cyan-950 font-bold shadow-xs'
@@ -710,14 +882,14 @@ export const ExecutivePresentationView: React.FC<ExecutivePresentationViewProps>
       {/* ======================================================== */}
       {/* 3. BOTTOM FLOATING CONTROL PILL (As in reference image)  */}
       {/* ======================================================== */}
-      <footer className="h-16 flex items-center justify-center shrink-0 pb-3 pointer-events-none z-40">
-        <div className="pointer-events-auto bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-slate-300/40 rounded-full px-4 py-2 flex items-center gap-3">
+      <footer className="h-16 flex items-center justify-center shrink-0 pb-3 pointer-events-none z-40 px-3">
+        <div className="pointer-events-auto bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-slate-300/40 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 flex items-center gap-2 sm:gap-3 max-w-[95vw]">
           
           {/* Previous Arrow */}
           <button
             onClick={prevSlide}
             disabled={currentIndex === 0}
-            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+            className="p-1 sm:p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
             title={lang === 'ar' ? 'السابق' : 'Previous'}
           >
             {dir === 'rtl' ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -727,60 +899,63 @@ export const ExecutivePresentationView: React.FC<ExecutivePresentationViewProps>
           <button
             onClick={nextSlide}
             disabled={currentIndex === masterSlides.length - 1}
-            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+            className="p-1 sm:p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
             title={lang === 'ar' ? 'التالي' : 'Next'}
           >
             {dir === 'rtl' ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
 
           {/* Slide Counter */}
-          <div className="text-xs font-bold text-slate-700 font-mono px-2">
+          <div className="text-[11px] sm:text-xs font-bold text-slate-700 font-mono px-1 sm:px-2 whitespace-nowrap">
             {lang === 'ar'
               ? `شريحة ${currentIndex + 1} من ${masterSlides.length}`
               : `Slide ${currentIndex + 1} of ${masterSlides.length}`}
           </div>
 
-          <div className="w-px h-5 bg-slate-200" />
+          {/* Desktop Presenter Tools (Hidden on mobile for clean remote experience) */}
+          <div className="hidden sm:flex items-center gap-1.5">
+            <div className="w-px h-5 bg-slate-200 mx-1" />
 
-          {/* Laser Pointer Tool */}
-          <button
-            onClick={() => setIsLaserActive(prev => !prev)}
-            className={`p-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-              isLaserActive
-                ? 'bg-cyan-500 text-white shadow-xs'
-                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-            title={lang === 'ar' ? 'مؤشر الليزر التفاعلي (L)' : 'Interactive Laser Pointer (L)'}
-          >
-            <MousePointer className="w-4 h-4" />
-          </button>
+            {/* Laser Pointer Tool */}
+            <button
+              onClick={() => setIsLaserActive(prev => !prev)}
+              className={`p-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                isLaserActive
+                  ? 'bg-cyan-500 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+              title={lang === 'ar' ? 'مؤشر الليزر التفاعلي (L)' : 'Interactive Laser Pointer (L)'}
+            >
+              <MousePointer className="w-4 h-4" />
+            </button>
 
-          {/* Pen / Highlighter Tool */}
-          <button
-            onClick={() => setIsLaserActive(prev => !prev)}
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
-            title={lang === 'ar' ? 'قلم العرض' : 'Presentation Pen'}
-          >
-            <PenTool className="w-4 h-4" />
-          </button>
+            {/* Pen / Highlighter Tool */}
+            <button
+              onClick={() => setIsLaserActive(prev => !prev)}
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
+              title={lang === 'ar' ? 'قلم العرض' : 'Presentation Pen'}
+            >
+              <PenTool className="w-4 h-4" />
+            </button>
 
-          {/* Timer Toggle */}
-          <button
-            onClick={() => setIsTimerRunning(prev => !prev)}
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
-            title={lang === 'ar' ? 'المؤقت الزمني' : 'Timer'}
-          >
-            <Timer className="w-4 h-4" />
-          </button>
+            {/* Timer Toggle */}
+            <button
+              onClick={() => setIsTimerRunning(prev => !prev)}
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
+              title={lang === 'ar' ? 'المؤقت الزمني' : 'Timer'}
+            >
+              <Timer className="w-4 h-4" />
+            </button>
 
-          {/* Fullscreen Tool */}
-          <button
-            onClick={toggleFullscreen}
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
-            title={lang === 'ar' ? 'تكبير ملء الشاشة' : 'Fullscreen'}
-          >
-            <Tv className="w-4 h-4" />
-          </button>
+            {/* Fullscreen Tool */}
+            <button
+              onClick={toggleFullscreen}
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
+              title={lang === 'ar' ? 'تكبير ملء الشاشة' : 'Fullscreen'}
+            >
+              <Tv className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </footer>
     </div>

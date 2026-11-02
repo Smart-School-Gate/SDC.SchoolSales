@@ -26,6 +26,17 @@ public class SalesTargetsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("analytics")]
+    public async Task<ActionResult<ApiResponse<SalesPerformanceDashboardDto>>> GetSalesPerformanceDashboard(
+        [FromQuery] int? year,
+        [FromQuery] int? month,
+        [FromQuery] Guid? repId,
+        [FromQuery] ProductInterest? product)
+    {
+        var result = await _targetService.GetSalesPerformanceDashboardAsync(year, month, repId, product);
+        return Ok(result);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ApiResponse<SalesTargetDto>>> GetTargetById(Guid id)
     {

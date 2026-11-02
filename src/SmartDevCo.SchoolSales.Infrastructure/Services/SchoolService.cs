@@ -119,6 +119,8 @@ public class SchoolService : ISchoolService
                 Source = s.Source,
                 SalesStatus = s.SalesStatus,
                 GeneralNotes = s.GeneralNotes,
+                IntelligenceProfileJson = s.IntelligenceProfileJson,
+                DiscoveryAnswersJson = s.DiscoveryAnswersJson,
                 CreatedByUserId = s.CreatedByUserId,
                 CreatedByUserName = s.CreatedByUser.FullName,
                 AssignedToUserId = s.AssignedToUserId,
@@ -185,6 +187,8 @@ public class SchoolService : ISchoolService
             Source = school.Source,
             SalesStatus = school.SalesStatus,
             GeneralNotes = school.GeneralNotes,
+            IntelligenceProfileJson = school.IntelligenceProfileJson,
+            DiscoveryAnswersJson = school.DiscoveryAnswersJson,
             CreatedByUserId = school.CreatedByUserId,
             CreatedByUserName = school.CreatedByUser.FullName,
             AssignedToUserId = school.AssignedToUserId,
@@ -366,9 +370,9 @@ public class SchoolService : ISchoolService
         // Check permission: Admin, Manager, or Employee who created or is assigned to the school
         if (!_currentUser.IsSuperAdmin && !_currentUser.IsSalesManager)
         {
-            var isCreator = school.CreatedByUserId != null && school.CreatedByUserId != Guid.Empty && school.CreatedByUserId == _currentUser.UserId;
+            var isCreator = school.CreatedByUserId != Guid.Empty && school.CreatedByUserId == _currentUser.UserId;
             var isAssigned = school.AssignedToUserId != null && school.AssignedToUserId != Guid.Empty && school.AssignedToUserId == _currentUser.UserId;
-            var isUnclaimed = school.CreatedByUserId == null || school.CreatedByUserId == Guid.Empty;
+            var isUnclaimed = school.CreatedByUserId == Guid.Empty;
 
             if (!isCreator && !isAssigned && !isUnclaimed)
             {
@@ -399,6 +403,14 @@ public class SchoolService : ISchoolService
         school.Source = request.Source;
         school.SalesStatus = request.SalesStatus;
         school.GeneralNotes = request.GeneralNotes?.Trim();
+        if (request.IntelligenceProfileJson != null)
+        {
+            school.IntelligenceProfileJson = request.IntelligenceProfileJson;
+        }
+        if (request.DiscoveryAnswersJson != null)
+        {
+            school.DiscoveryAnswersJson = request.DiscoveryAnswersJson;
+        }
         school.UpdatedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -406,6 +418,63 @@ public class SchoolService : ISchoolService
 
         var updatedDto = (await GetSchoolByIdAsync(school.Id)).Data!;
         return ApiResponse<SchoolDto>.Ok(updatedDto, "School updated successfully.");
+    }
+
+    public async Task<ApiResponse<SchoolDetailDto>> UpdateSchoolIntelligenceAsync(Guid id, string intelligenceJson)
+    {
+        var school = await _db.Schools.FirstOrDefaultAsync(s => s.Id == id);
+        if (school == null)
+        {
+            return ApiResponse<SchoolDetailDto>.Fail("School not found.");
+        }
+
+        if (!_currentUser.IsSuperAdmin && !_currentUser.IsSalesManager)
+        {
+            var isCreator = school.CreatedByUserId == _currentUser.UserId;
+            var isAssigned = school.AssignedToUserId == _currentUser.UserId;
+            if (!isCreator && !isAssigned)
+            {
+                return ApiResponse<SchoolDetailDto>.Fail("You do not have permission to update this school's intelligence profile.");
+            }
+        }
+
+        school.IntelligenceProfileJson = intelligenceJson;
+        school.UpdatedAtUtc = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync("UpdateSchoolIntelligence", "School", school.Id.ToString(), new { school.Name });
+
+        var updatedDetail = (await GetSchoolByIdAsync(school.Id)).Data!;
+        return ApiResponse<SchoolDetailDto>.Ok(updatedDetail, "School intelligence profile updated successfully.");
+    }
+
+    public async Task<ApiResponse<SchoolDetailDto>> UpdateSchoolDiscoveryAnswersAsync(Guid id, string answersJson)
+    {
+        var school = await _db.Schools.FirstOrDefaultAsync(s => s.Id == id);
+        if (school == null)
+        {
+            return ApiResponse<SchoolDetailDto>.Fail("School not found.");
+        }
+
+        // Permission check: Admin, Manager, Creator or Assigned Rep
+        if (!_currentUser.IsSuperAdmin && !_currentUser.IsSalesManager)
+        {
+            var isCreator = school.CreatedByUserId == _currentUser.UserId;
+            var isAssigned = school.AssignedToUserId == _currentUser.UserId;
+            if (!isCreator && !isAssigned)
+            {
+                return ApiResponse<SchoolDetailDto>.Fail("You do not have permission to update discovery answers for this school.");
+            }
+        }
+
+        school.DiscoveryAnswersJson = answersJson;
+        school.UpdatedAtUtc = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync("UpdateSchoolDiscoveryAnswers", "School", school.Id.ToString(), new { school.Name });
+
+        var updatedDetail = (await GetSchoolByIdAsync(school.Id)).Data!;
+        return ApiResponse<SchoolDetailDto>.Ok(updatedDetail, "School discovery answers saved successfully.");
     }
 
     public async Task<ApiResponse<bool>> DeleteSchoolAsync(Guid id)

@@ -314,7 +314,7 @@ export const KnowledgeBasePage: React.FC = () => {
                         {/* Question */}
                         <div className="flex items-start justify-between gap-3">
                           <h4 className="text-sm font-black text-slate-900">
-                            س: {qa.questionAr}
+                            {language === 'ar' ? `س: ${qa.questionAr}` : `Q: ${qa.questionEn || qa.questionAr}`}
                           </h4>
 
                           {/* Manager Actions */}
@@ -374,8 +374,8 @@ export const KnowledgeBasePage: React.FC = () => {
       {/* 4. ADD / EDIT Q&A ITEM MODAL                             */}
       {/* ======================================================== */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-black text-slate-900">
                 {editingItem 

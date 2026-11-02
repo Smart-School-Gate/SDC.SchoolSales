@@ -131,6 +131,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Email).HasMaxLength(256);
             entity.Property(e => e.Website).HasMaxLength(256);
             entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.IntelligenceProfileJson).HasColumnType("text");
+            entity.Property(e => e.DiscoveryAnswersJson).HasColumnType("text");
 
             entity.HasIndex(e => e.Name);
             entity.HasIndex(e => e.City);

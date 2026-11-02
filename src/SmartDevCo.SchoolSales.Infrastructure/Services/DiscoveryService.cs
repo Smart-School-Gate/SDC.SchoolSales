@@ -31,11 +31,14 @@ public class DiscoveryService : IDiscoveryService
 
         foreach (var cat in categories)
         {
-            var questions = cat.Questions.AsEnumerable();
+            var questions = cat.Questions.Where(q => q.IsActive).AsEnumerable();
             if (product.HasValue)
             {
                 questions = questions.Where(q => q.Product == product.Value || q.Product == ProductInterest.Both);
             }
+
+            var qList = questions.ToList();
+            if (!qList.Any()) continue;
 
             result.Add(new QuestionCategoryDto
             {
@@ -43,7 +46,7 @@ public class DiscoveryService : IDiscoveryService
                 NameAr = cat.NameAr,
                 NameEn = cat.NameEn,
                 DisplayOrder = cat.DisplayOrder,
-                Questions = questions.Select(q => new QuestionTemplateDto
+                Questions = qList.Select(q => new QuestionTemplateDto
                 {
                     Id = q.Id,
                     CategoryId = q.CategoryId,

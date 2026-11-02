@@ -6,7 +6,7 @@ using SmartDevCo.SchoolSales.Core.Entities;
 
 namespace SmartDevCo.SchoolSales.Infrastructure.Data;
 
-public class DbSeeder
+public partial class DbSeeder
 {
     private readonly ApplicationDbContext _db;
     private readonly IConfiguration _config;
@@ -27,6 +27,8 @@ public class DbSeeder
         await SeedKnowledgeBaseAsync();
         await SeedPresentationTemplateAsync();
         await UpdateBrandingAsync();
+        await SeedSchoolIntelligenceAsync();
+        await SeedOfficialDiscoveryQuestionnaireAsync();
     }
 
     private async Task SeedRolesAndPermissionsAsync()

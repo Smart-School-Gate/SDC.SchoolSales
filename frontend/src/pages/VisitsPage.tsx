@@ -135,44 +135,44 @@ export const VisitsPage: React.FC = () => {
       {/* Top Filter and Highlight Stats Row */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Filter Bar Card */}
-        <div className="lg:col-span-8 bg-white rounded-2xl p-3 shadow-sm border border-slate-200/70 flex flex-wrap items-center gap-3">
+        <div className="lg:col-span-8 bg-white rounded-2xl p-3 shadow-sm border border-slate-200/70 flex flex-wrap items-center gap-2.5 sm:gap-3">
           <button 
             onClick={() => alert(language === 'ar' ? 'جاري تصدير التقرير بصيغة Excel...' : 'Exporting Excel...')}
-            className="bg-[#00B4D8] hover:bg-[#0096b4] text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+            className="bg-[#00B4D8] hover:bg-[#0096b4] text-white font-bold text-xs px-5 sm:px-6 py-2.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5 shrink-0"
           >
             <span>{language === 'ar' ? 'تصدير' : 'Export'}</span>
           </button>
 
-          <div className="relative flex-1 min-w-[180px]">
-            <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+          <div className="relative flex-1 min-w-[160px]">
+            <Search className="w-4 h-4 text-slate-400 absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder={language === 'ar' ? 'بحث...' : 'Search...'}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-50/80 border border-slate-200 rounded-xl pr-9 pl-4 py-2 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#00B4D8] focus:bg-white transition-all"
+              className="w-full bg-slate-50/80 border border-slate-200 rounded-xl ps-9 pe-4 py-2 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#00B4D8] focus:bg-white transition-all"
             />
           </div>
 
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none min-w-[130px]">
             <select
               value={selectedProduct}
               onChange={e => { setSelectedProduct(e.target.value); setPageIndex(1); }}
-              className="appearance-none bg-slate-50/80 border border-slate-200 rounded-xl pr-3 pl-8 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer focus:outline-none focus:border-[#00B4D8]"
+              className="w-full appearance-none bg-slate-50/80 border border-slate-200 rounded-xl ps-3 pe-8 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer focus:outline-none focus:border-[#00B4D8]"
             >
               <option value="">{language === 'ar' ? 'كل المنتجات' : 'All Products'}</option>
               <option value="SmartSchool">{language === 'ar' ? 'مدرسة ROOTACA الذكية' : 'ROOTACA Smart School'}</option>
               <option value="Academy">{language === 'ar' ? 'أكاديمية ROOTACA' : 'ROOTACA Academy'}</option>
               <option value="Both">{language === 'ar' ? 'كلا المنتجين' : 'Both Products'}</option>
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute end-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none min-w-[130px]">
             <select
               value={selectedOutcome}
               onChange={e => { setSelectedOutcome(e.target.value); setPageIndex(1); }}
-              className="appearance-none bg-slate-50/80 border border-slate-200 rounded-xl pr-3 pl-8 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer focus:outline-none focus:border-[#00B4D8]"
+              className="w-full appearance-none bg-slate-50/80 border border-slate-200 rounded-xl ps-3 pe-8 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer focus:outline-none focus:border-[#00B4D8]"
             >
               <option value="">{language === 'ar' ? 'كل النتائج' : 'All Outcomes'}</option>
               <option value="DemoRequested">{language === 'ar' ? 'طلب عرض تفاعلي' : 'Demo Requested'}</option>
@@ -182,7 +182,7 @@ export const VisitsPage: React.FC = () => {
               <option value="ClosedLost">{language === 'ar' ? 'صفقة ملغاة' : 'Closed Lost'}</option>
               <option value="FollowUpLater">{language === 'ar' ? 'متابعة لاحقة' : 'Follow Up Later'}</option>
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute end-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         </div>
 
@@ -221,8 +221,8 @@ export const VisitsPage: React.FC = () => {
             {language === 'ar' ? 'لا توجد زيارات مسجلة تطابق معايير البحث' : 'No visits match your criteria'}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-right">
+          <div className="overflow-x-auto min-w-0">
+            <table className="w-full min-w-[760px] text-xs text-start">
               <thead>
                 <tr className="border-b border-slate-100 text-slate-700 font-bold bg-slate-50/50">
                   <th className="py-3.5 px-4 text-center w-10">
