@@ -35,6 +35,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<Presentation> Presentations => Set<Presentation>();
     public DbSet<PresentationSlide> PresentationSlides => Set<PresentationSlide>();
     public DbSet<PresentationVersion> PresentationVersions => Set<PresentationVersion>();
+    public DbSet<PresentationViewEvent> PresentationViewEvents => Set<PresentationViewEvent>();
+    public DbSet<PresentationPublicInquiry> PresentationPublicInquiries => Set<PresentationPublicInquiry>();
 
     public DbSet<QACategory> QACategories => Set<QACategory>();
     public DbSet<QATemplate> QATemplates => Set<QATemplate>();
@@ -350,8 +352,10 @@ public class ApplicationDbContext : DbContext
             entity.ToTable("presentations");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Title).IsRequired().HasMaxLength(256);
+            entity.Property(e => e.ShareToken).HasMaxLength(128);
 
             entity.HasIndex(e => e.SchoolId);
+            entity.HasIndex(e => e.ShareToken);
 
             entity.HasOne(p => p.School)
                   .WithMany(s => s.Presentations)
@@ -393,6 +397,53 @@ public class ApplicationDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(v => v.CreatedByUserId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PresentationViewEvent>(entity =>
+        {
+            entity.ToTable("presentation_view_events");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ShareToken).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.SessionId).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.Language).HasMaxLength(16);
+            entity.Property(e => e.ReferrerDomain).HasMaxLength(256);
+
+            entity.HasIndex(e => e.PresentationId);
+            entity.HasIndex(e => e.ShareToken);
+            entity.HasIndex(e => e.SessionId);
+            entity.HasIndex(e => e.CreatedAtUtc);
+
+            entity.HasOne(v => v.Presentation)
+                  .WithMany(p => p.ViewEvents)
+                  .HasForeignKey(v => v.PresentationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PresentationPublicInquiry>(entity =>
+        {
+            entity.ToTable("presentation_public_inquiries");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ShareToken).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.SchoolName).IsRequired().HasMaxLength(256);
+            entity.Property(e => e.ContactName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ContactPhone).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.ContactEmail).HasMaxLength(256);
+            entity.Property(e => e.JobTitle).HasMaxLength(150);
+
+            entity.HasIndex(e => e.PresentationId);
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasIndex(e => e.ShareToken);
+            entity.HasIndex(e => e.CreatedAtUtc);
+
+            entity.HasOne(i => i.Presentation)
+                  .WithMany(p => p.PublicInquiries)
+                  .HasForeignKey(i => i.PresentationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(i => i.School)
+                  .WithMany()
+                  .HasForeignKey(i => i.SchoolId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<QACategory>(entity =>

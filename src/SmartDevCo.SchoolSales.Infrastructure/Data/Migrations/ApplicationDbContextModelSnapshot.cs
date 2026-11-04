@@ -209,14 +209,33 @@ namespace SmartDevCo.SchoolSales.Infrastructure.Data.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsTemplate")
                         .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("PublishedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PublishedSnapshotJson")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("PublishedVersionNumber")
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("SchoolId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("SelectedProducts")
                         .HasColumnType("integer");
+
+                    b.Property<string>("ShareToken")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("ShareTokenExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -235,7 +254,83 @@ namespace SmartDevCo.SchoolSales.Infrastructure.Data.Migrations
 
                     b.HasIndex("SchoolId");
 
+                    b.HasIndex("ShareToken");
+
                     b.ToTable("presentations", (string)null);
+                });
+
+            modelBuilder.Entity("SmartDevCo.SchoolSales.Core.Entities.PresentationPublicInquiry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContactEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ContactName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ContactPhone")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("InterestedProduct")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsReviewed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("JobTitle")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Message")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("PresentationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ReviewedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SchoolId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SchoolName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ShareToken")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("PresentationId");
+
+                    b.HasIndex("SchoolId");
+
+                    b.HasIndex("ShareToken");
+
+                    b.ToTable("presentation_public_inquiries", (string)null);
                 });
 
             modelBuilder.Entity("SmartDevCo.SchoolSales.Core.Entities.PresentationSlide", b =>
@@ -331,6 +426,61 @@ namespace SmartDevCo.SchoolSales.Infrastructure.Data.Migrations
                     b.HasIndex("PresentationId");
 
                     b.ToTable("presentation_versions", (string)null);
+                });
+
+            modelBuilder.Entity("SmartDevCo.SchoolSales.Core.Entities.PresentationViewEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDemoCtaClick")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Language")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("PresentationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReferrerDomain")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ShareToken")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int?>("SlideIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("PresentationId");
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("ShareToken");
+
+                    b.ToTable("presentation_view_events", (string)null);
                 });
 
             modelBuilder.Entity("SmartDevCo.SchoolSales.Core.Entities.QACategory", b =>
@@ -1075,6 +1225,24 @@ namespace SmartDevCo.SchoolSales.Infrastructure.Data.Migrations
                     b.Navigation("School");
                 });
 
+            modelBuilder.Entity("SmartDevCo.SchoolSales.Core.Entities.PresentationPublicInquiry", b =>
+                {
+                    b.HasOne("SmartDevCo.SchoolSales.Core.Entities.Presentation", "Presentation")
+                        .WithMany("PublicInquiries")
+                        .HasForeignKey("PresentationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartDevCo.SchoolSales.Core.Entities.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Presentation");
+
+                    b.Navigation("School");
+                });
+
             modelBuilder.Entity("SmartDevCo.SchoolSales.Core.Entities.PresentationSlide", b =>
                 {
                     b.HasOne("SmartDevCo.SchoolSales.Core.Entities.Presentation", "Presentation")
@@ -1101,6 +1269,17 @@ namespace SmartDevCo.SchoolSales.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("CreatedByUser");
+
+                    b.Navigation("Presentation");
+                });
+
+            modelBuilder.Entity("SmartDevCo.SchoolSales.Core.Entities.PresentationViewEvent", b =>
+                {
+                    b.HasOne("SmartDevCo.SchoolSales.Core.Entities.Presentation", "Presentation")
+                        .WithMany("ViewEvents")
+                        .HasForeignKey("PresentationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Presentation");
                 });
@@ -1333,9 +1512,13 @@ namespace SmartDevCo.SchoolSales.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("SmartDevCo.SchoolSales.Core.Entities.Presentation", b =>
                 {
+                    b.Navigation("PublicInquiries");
+
                     b.Navigation("Slides");
 
                     b.Navigation("Versions");
+
+                    b.Navigation("ViewEvents");
                 });
 
             modelBuilder.Entity("SmartDevCo.SchoolSales.Core.Entities.QACategory", b =>

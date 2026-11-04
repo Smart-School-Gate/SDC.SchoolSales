@@ -100,12 +100,25 @@ public interface IPresentationService
     Task<ApiResponse<List<PresentationDto>>> GetPresentationsAsync(Guid? schoolId = null, bool? templatesOnly = null);
     Task<ApiResponse<PresentationDto>> GetPresentationByIdAsync(Guid id);
     Task<ApiResponse<PresentationDto>> CreatePresentationAsync(CreatePresentationRequest request);
+    Task<ApiResponse<PresentationDto>> DuplicatePresentationAsync(Guid id, DuplicatePresentationRequest? request);
     Task<ApiResponse<PresentationDto>> DuplicateForSchoolAsync(Guid templateId, Guid schoolId);
+    Task<ApiResponse<bool>> DeletePresentationAsync(Guid id);
     Task<ApiResponse<PresentationSlideDto>> AddSlideAsync(Guid presentationId, CreateSlideRequest request);
     Task<ApiResponse<PresentationSlideDto>> UpdateSlideAsync(Guid slideId, UpdateSlideRequest request);
     Task<ApiResponse<bool>> DeleteSlideAsync(Guid slideId);
     Task<ApiResponse<bool>> ReorderSlidesAsync(Guid presentationId, ReorderSlidesRequest request);
     Task<ApiResponse<bool>> SaveVersionAsync(Guid presentationId);
+
+    // Publishing and Sharing
+    Task<ApiResponse<PublishResultDto>> PublishAsync(Guid presentationId, PublishPresentationRequest request);
+    Task<ApiResponse<bool>> UnpublishAsync(Guid presentationId);
+    Task<ApiResponse<PublishResultDto>> RegenerateShareTokenAsync(Guid presentationId);
+    Task<ApiResponse<PresentationAnalyticsSummaryDto>> GetAnalyticsAsync(Guid presentationId);
+
+    // Public Unauthenticated endpoints
+    Task<ApiResponse<PublicPresentationDto>> GetPublicPresentationAsync(string shareToken);
+    Task<ApiResponse<bool>> RecordViewEventAsync(string shareToken, RecordViewEventRequest request);
+    Task<ApiResponse<PublicLeadInquiryResultDto>> SubmitPublicInquiryAsync(string shareToken, PublicLeadInquiryRequest request);
 }
 
 public interface IKnowledgeBaseService

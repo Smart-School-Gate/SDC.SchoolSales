@@ -106,6 +106,7 @@ export const SchoolWorkspacePage: React.FC = () => {
   // Modals
   const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
   const [isLogVisitModalOpen, setIsLogVisitModalOpen] = useState(false);
+  const [isSubmittingVisit, setIsSubmittingVisit] = useState(false);
   const [isAddActivityModalOpen, setIsAddActivityModalOpen] = useState(false);
 
   // Contact Form State
@@ -457,25 +458,45 @@ export const SchoolWorkspacePage: React.FC = () => {
   // Visits Submit
   const handleLogVisitSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!id) return;
-    const res = await api.createVisit({
-      schoolId: id,
-      ...visitForm
-    });
-    if (res.success) {
-      setIsLogVisitModalOpen(false);
-      setVisitForm({
-        visitDate: new Date().toISOString().split('T')[0],
-        contactPerson: '',
-        contactPosition: 'مدير المدرسة',
-        decisionMakerReached: true,
-        interestedProducts: 'Both',
-        visitOutcome: 'DemoRequested',
-        notes: '',
-        nextAction: '',
-        nextFollowUpDate: ''
-      });
-      loadWorkspaceData();
+    if (!id || isSubmittingVisit) return;
+    setIsSubmittingVisit(true);
+    try {
+      const payload: any = {
+        schoolId: id,
+        visitDate: visitForm.visitDate ? new Date(visitForm.visitDate).toISOString() : new Date().toISOString(),
+        contactPerson: visitForm.contactPerson.trim(),
+        contactPosition: visitForm.contactPosition?.trim() || undefined,
+        decisionMakerReached: !!visitForm.decisionMakerReached,
+        interestedProducts: visitForm.interestedProducts,
+        visitOutcome: visitForm.visitOutcome,
+        notes: visitForm.notes?.trim() || undefined,
+        nextAction: visitForm.nextAction?.trim() || undefined,
+        nextFollowUpDate: visitForm.nextFollowUpDate ? new Date(visitForm.nextFollowUpDate).toISOString() : undefined
+      };
+
+      const res = await api.createVisit(payload);
+      if (res.success) {
+        setIsLogVisitModalOpen(false);
+        setVisitForm({
+          visitDate: new Date().toISOString().split('T')[0],
+          contactPerson: '',
+          contactPosition: 'مدير المدرسة',
+          decisionMakerReached: true,
+          interestedProducts: 'Both',
+          visitOutcome: 'DemoRequested',
+          notes: '',
+          nextAction: '',
+          nextFollowUpDate: ''
+        });
+        await loadWorkspaceData();
+      } else {
+        alert(res.message || (language === 'ar' ? 'حدث خطأ أثناء تسجيل الزيارة. يرجى التأكد من البيانات.' : 'Failed to record visit report.'));
+      }
+    } catch (err: any) {
+      console.error('Error recording visit:', err);
+      alert(err?.message || (language === 'ar' ? 'تعذر الاتصال بالخادم لتسجيل الزيارة' : 'Server connection error while recording visit'));
+    } finally {
+      setIsSubmittingVisit(false);
     }
   };
 
@@ -1631,16 +1652,21 @@ export const SchoolWorkspacePage: React.FC = () => {
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
+                  disabled={isSubmittingVisit}
                   onClick={() => setIsLogVisitModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold"
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold disabled:opacity-50"
                 >
                   {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#009688] hover:bg-[#00897B] text-white rounded-xl font-bold shadow-xs"
+                  disabled={isSubmittingVisit}
+                  className="px-5 py-2 bg-[#009688] hover:bg-[#00897B] disabled:bg-slate-400 text-white rounded-xl font-bold shadow-xs transition-all flex items-center gap-2"
                 >
-                  {language === 'ar' ? 'توثيق الزيارة نهائياً' : 'Log Visit'}
+                  {isSubmittingVisit && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  <span>{isSubmittingVisit ? (language === 'ar' ? 'جاري التوثيق...' : 'Saving...') : (language === 'ar' ? 'توثيق الزيارة نهائياً' : 'Log Visit')}</span>
                 </button>
               </div>
             </form>

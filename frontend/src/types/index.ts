@@ -288,9 +288,103 @@ export interface PresentationDto {
   selectedProducts: ProductInterest;
   versionNumber: number;
   slidesCount: number;
+  isPublished?: boolean;
+  publishedAtUtc?: string;
+  publishedVersionNumber?: number;
+  shareToken?: string;
+  shareTokenExpiresAtUtc?: string;
   slides: PresentationSlideDto[];
   createdAtUtc: string;
   updatedAtUtc?: string;
+}
+
+export interface PublicSlideDto {
+  id: string;
+  slideTitleAr: string;
+  slideTitleEn: string;
+  contentAr: string;
+  contentEn: string;
+  keyPointsArJson?: string;
+  keyPointsEnJson?: string;
+  imageUrl?: string;
+  category: SlideCategory;
+  displayOrder: number;
+}
+
+export interface PublicPresentationDto {
+  shareToken: string;
+  title: string;
+  description?: string;
+  schoolName?: string;
+  selectedProducts: ProductInterest;
+  versionNumber: number;
+  publishedAtUtc: string;
+  expiresAtUtc?: string;
+  slides: PublicSlideDto[];
+}
+
+export interface PublishPresentationRequest {
+  expiresAtUtc?: string;
+  regenerateToken?: boolean;
+}
+
+export interface PublishResultDto {
+  presentationId: string;
+  shareToken: string;
+  publicUrl: string;
+  isPublished: boolean;
+  publishedAtUtc?: string;
+  publishedVersionNumber?: number;
+  expiresAtUtc?: string;
+}
+
+export interface RecordViewEventRequest {
+  sessionId: string;
+  slideIndex?: number;
+  durationSeconds: number;
+  isDemoCtaClick: boolean;
+  language?: string;
+  referrerDomain?: string;
+}
+
+export interface SlideAnalyticsDto {
+  slideIndex: number;
+  slideTitleAr: string;
+  slideTitleEn: string;
+  viewCount: number;
+  totalDurationSeconds: number;
+  averageDurationSeconds: number;
+}
+
+export interface PresentationAnalyticsSummaryDto {
+  presentationId: string;
+  title: string;
+  shareToken?: string;
+  isPublished: boolean;
+  totalViews: number;
+  uniqueSessions: number;
+  demoCtaClicks: number;
+  totalEngagementDurationSeconds: number;
+  averageDurationPerSessionSeconds: number;
+  lastViewedAtUtc?: string;
+  slideStats: SlideAnalyticsDto[];
+}
+
+export interface PublicLeadInquiryRequest {
+  schoolName: string;
+  contactName: string;
+  contactPhone: string;
+  contactEmail?: string;
+  jobTitle?: string;
+  message?: string;
+  interestedProduct: ProductInterest;
+  honeypot?: string;
+}
+
+export interface PublicLeadInquiryResultDto {
+  success: boolean;
+  messageAr: string;
+  messageEn: string;
 }
 
 export interface QATemplateDto {

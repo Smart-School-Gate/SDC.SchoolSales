@@ -15,6 +15,7 @@ import { DiscoveryBankPage } from './pages/DiscoveryBankPage';
 import { KnowledgeBasePage } from './pages/KnowledgeBasePage';
 import { SalesTeamPage } from './pages/SalesTeamPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { PublicPresentationPage } from './pages/PublicPresentationPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; requiresManager?: boolean }> = ({
   children,
@@ -52,6 +53,7 @@ export function App() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/p/:token" element={<PublicPresentationPage />} />
 
             <Route
               path="/"

@@ -185,12 +185,24 @@ export const api = {
   },
   getPresentationById: (id: string) => request<PresentationDto>(`/presentations/${id}`),
   createPresentation: (body: any) => request<PresentationDto>('/presentations', { method: 'POST', body: JSON.stringify(body) }),
+  duplicatePresentation: (id: string, body?: { newTitle?: string; targetSchoolId?: string; isTemplate?: boolean }) =>
+    request<PresentationDto>(`/presentations/${id}/duplicate`, { method: 'POST', body: JSON.stringify(body || {}) }),
   duplicatePresentationForSchool: (templateId: string, schoolId: string) => request<PresentationDto>(`/presentations/${templateId}/duplicate-for-school/${schoolId}`, { method: 'POST' }),
+  deletePresentation: (id: string) => request<boolean>(`/presentations/${id}`, { method: 'DELETE' }),
   addSlide: (presentationId: string, body: any) => request<PresentationSlideDto>(`/presentations/${presentationId}/slides`, { method: 'POST', body: JSON.stringify(body) }),
   updateSlide: (slideId: string, body: any) => request<PresentationSlideDto>(`/presentations/slides/${slideId}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteSlide: (slideId: string) => request<boolean>(`/presentations/slides/${slideId}`, { method: 'DELETE' }),
   reorderSlides: (presentationId: string, slideIds: string[]) => request<boolean>(`/presentations/${presentationId}/reorder-slides`, { method: 'POST', body: JSON.stringify({ slideIds }) }),
   savePresentationVersion: (presentationId: string) => request<boolean>(`/presentations/${presentationId}/save-version`, { method: 'POST' }),
+  publishPresentation: (id: string, body?: any) => request<any>(`/presentations/${id}/publish`, { method: 'POST', body: JSON.stringify(body || {}) }),
+  unpublishPresentation: (id: string) => request<boolean>(`/presentations/${id}/unpublish`, { method: 'POST' }),
+  regenerateShareToken: (id: string) => request<any>(`/presentations/${id}/regenerate-share-token`, { method: 'POST' }),
+  getPresentationAnalytics: (id: string) => request<any>(`/presentations/${id}/analytics`),
+
+  // Public Presentation View & Lead Capture
+  getPublicPresentation: (shareToken: string) => request<any>(`/public/presentations/${shareToken}`),
+  recordPublicViewEvent: (shareToken: string, body: any) => request<boolean>(`/public/presentations/${shareToken}/views`, { method: 'POST', body: JSON.stringify(body) }),
+  submitPublicInquiry: (shareToken: string, body: any) => request<any>(`/public/presentations/${shareToken}/inquiry`, { method: 'POST', body: JSON.stringify(body) }),
 
   // Knowledge Base
   getQA: (product?: ProductInterest) => request<QACategoryDto[]>(`/knowledge-base${product ? `?product=${product}` : ''}`),

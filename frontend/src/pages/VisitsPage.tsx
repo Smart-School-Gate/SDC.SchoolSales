@@ -12,12 +12,14 @@ import {
   ChevronsRight, 
   ChevronRight, 
   ChevronLeft, 
-  ChevronsLeft 
+  ChevronsLeft,
+  Plus,
+  X
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { VisitSummaryDto, VisitOutcomeType } from '../types';
+import { VisitSummaryDto, VisitOutcomeType, SchoolDto, ProductInterest } from '../types';
 
 export const VisitsPage: React.FC = () => {
   const { t, language } = useLanguage();
@@ -31,6 +33,24 @@ export const VisitsPage: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Log Visit Modal State
+  const [isLogVisitModalOpen, setIsLogVisitModalOpen] = useState(false);
+  const [schools, setSchools] = useState<SchoolDto[]>([]);
+  const [loadingSchools, setLoadingSchools] = useState(false);
+  const [isSubmittingVisit, setIsSubmittingVisit] = useState(false);
+  const [visitForm, setVisitForm] = useState({
+    schoolId: '',
+    visitDate: new Date().toISOString().split('T')[0],
+    contactPerson: '',
+    contactPosition: 'مدير المدرسة',
+    decisionMakerReached: true,
+    interestedProducts: 'Both' as ProductInterest,
+    visitOutcome: 'DemoRequested' as VisitOutcomeType,
+    notes: '',
+    nextAction: '',
+    nextFollowUpDate: ''
+  });
 
   useEffect(() => {
     loadVisits();
@@ -50,6 +70,76 @@ export const VisitsPage: React.FC = () => {
       setTotalCount(res.data.totalCount);
     }
     setLoading(false);
+  };
+
+  const loadSchools = async () => {
+    if (schools.length > 0) return;
+    setLoadingSchools(true);
+    try {
+      const res = await api.getSchools({ pageSize: 100 });
+      if (res.success && res.data) {
+        const items = res.data.items;
+        setSchools(items);
+        if (items.length > 0 && !visitForm.schoolId) {
+          const firstId = items[0].id;
+          setVisitForm(prev => ({ ...prev, schoolId: firstId }));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load schools:', err);
+    } finally {
+      setLoadingSchools(false);
+    }
+  };
+
+  const handleCreateVisit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!visitForm.schoolId) {
+      alert(language === 'ar' ? 'يرجى اختيار المدرسة أولاً' : 'Please select a school first');
+      return;
+    }
+    if (isSubmittingVisit) return;
+    setIsSubmittingVisit(true);
+
+    try {
+      const payload: any = {
+        schoolId: visitForm.schoolId,
+        visitDate: visitForm.visitDate ? new Date(visitForm.visitDate).toISOString() : new Date().toISOString(),
+        contactPerson: visitForm.contactPerson.trim(),
+        contactPosition: visitForm.contactPosition?.trim() || undefined,
+        decisionMakerReached: !!visitForm.decisionMakerReached,
+        interestedProducts: visitForm.interestedProducts,
+        visitOutcome: visitForm.visitOutcome,
+        notes: visitForm.notes?.trim() || undefined,
+        nextAction: visitForm.nextAction?.trim() || undefined,
+        nextFollowUpDate: visitForm.nextFollowUpDate ? new Date(visitForm.nextFollowUpDate).toISOString() : undefined
+      };
+
+      const res = await api.createVisit(payload);
+      if (res.success) {
+        setIsLogVisitModalOpen(false);
+        setVisitForm({
+          schoolId: schools[0]?.id || '',
+          visitDate: new Date().toISOString().split('T')[0],
+          contactPerson: '',
+          contactPosition: 'مدير المدرسة',
+          decisionMakerReached: true,
+          interestedProducts: 'Both',
+          visitOutcome: 'DemoRequested',
+          notes: '',
+          nextAction: '',
+          nextFollowUpDate: ''
+        });
+        await loadVisits();
+      } else {
+        alert(res.message || (language === 'ar' ? 'حدث خطأ أثناء تسجيل الزيارة. يرجى مراجعة البيانات.' : 'Failed to record visit'));
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || (language === 'ar' ? 'تعذر الاتصال بالخادم لتسجيل الزيارة' : 'Server connection error'));
+    } finally {
+      setIsSubmittingVisit(false);
+    }
   };
 
   const getOutcomeBadge = (outcome: VisitOutcomeType) => {
@@ -130,6 +220,17 @@ export const VisitsPage: React.FC = () => {
             {language === 'ar' ? 'تقارير الزيارات' : 'Visit Reports'}
           </p>
         </div>
+
+        <button
+          onClick={() => {
+            setIsLogVisitModalOpen(true);
+            loadSchools();
+          }}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#009688] hover:bg-[#00897B] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all cursor-pointer self-start sm:self-auto"
+        >
+          <Plus className="w-4 h-4" />
+          <span>{language === 'ar' ? 'تسجيل زيارة جديدة' : 'Log New Visit'}</span>
+        </button>
       </div>
 
       {/* Top Filter and Highlight Stats Row */}
@@ -351,6 +452,207 @@ export const VisitsPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Log Visit Modal */}
+      {isLogVisitModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 my-8">
+            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100">
+              <h3 className="text-base sm:text-lg font-black text-slate-900">
+                {language === 'ar' ? 'تسجيل زيارة ميدانية جديدة' : 'Log New Field Visit'}
+              </h3>
+              <button 
+                onClick={() => setIsLogVisitModalOpen(false)} 
+                className="text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateVisit} className="space-y-3.5 text-xs">
+              {/* School Selector */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {language === 'ar' ? 'المدرسة *' : 'School *'}
+                </label>
+                {loadingSchools ? (
+                  <div className="text-slate-400 py-2">
+                    {language === 'ar' ? 'جاري تحميل قائمة المدارس...' : 'Loading schools...'}
+                  </div>
+                ) : (
+                  <select
+                    required
+                    value={visitForm.schoolId}
+                    onChange={e => setVisitForm({ ...visitForm, schoolId: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-[#00B4D8]"
+                  >
+                    <option value="">{language === 'ar' ? '-- اختر المدرسة --' : '-- Select School --'}</option>
+                    {schools.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.city || ''})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {language === 'ar' ? 'تاريخ الزيارة *' : 'Visit Date *'}
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={visitForm.visitDate}
+                    onChange={e => setVisitForm({ ...visitForm, visitDate: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-[#00B4D8]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {language === 'ar' ? 'المنتج المهتم به' : 'Product'}
+                  </label>
+                  <select
+                    value={visitForm.interestedProducts}
+                    onChange={e => setVisitForm({ ...visitForm, interestedProducts: e.target.value as ProductInterest })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#00B4D8]"
+                  >
+                    <option value="Both">{t('product.Both') || (language === 'ar' ? 'كلا المنتجين' : 'Both Products')}</option>
+                    <option value="SmartSchool">{t('product.SmartSchool') || (language === 'ar' ? 'مدرسة ROOTACA الذكية' : 'ROOTACA Smart School')}</option>
+                    <option value="Academy">{t('product.Academy') || (language === 'ar' ? 'أكاديمية ROOTACA' : 'ROOTACA Academy')}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {language === 'ar' ? 'المسؤول الذي قابلته *' : 'Met With *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={visitForm.contactPerson}
+                    onChange={e => setVisitForm({ ...visitForm, contactPerson: e.target.value })}
+                    placeholder={language === 'ar' ? 'اسم الشخص المسؤول' : 'Contact person name'}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#00B4D8]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {language === 'ar' ? 'منصب المسؤول' : 'Position'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={language === 'ar' ? 'مثال: مدير المدرسة، الناظر' : 'e.g. Principal'}
+                    value={visitForm.contactPosition}
+                    onChange={e => setVisitForm({ ...visitForm, contactPosition: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#00B4D8]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {language === 'ar' ? 'نتيجة الزيارة *' : 'Outcome *'}
+                </label>
+                <select
+                  value={visitForm.visitOutcome}
+                  onChange={e => setVisitForm({ ...visitForm, visitOutcome: e.target.value as VisitOutcomeType })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-[#00B4D8]"
+                >
+                  <option value="DemoRequested">{language === 'ar' ? 'طلب عرض تفاعلي (Demo)' : 'Interactive Demo Requested'}</option>
+                  <option value="MeetingScheduled">{language === 'ar' ? 'تم جدولة اجتماع مجلس الإدارة' : 'Board Meeting Scheduled'}</option>
+                  <option value="ProposalRequested">{language === 'ar' ? 'طلب عرض فني ومالي' : 'Proposal Requested'}</option>
+                  <option value="DetailsRequested">{language === 'ar' ? 'طلب تفاصيل إضافية' : 'Details Requested'}</option>
+                  <option value="DecisionMakerNotReached">{language === 'ar' ? 'لم يتم مقابلة صاحب القرار' : 'Decision Maker Not Reached'}</option>
+                  <option value="FollowUpLater">{language === 'ar' ? 'متابعة لاحقة' : 'Follow Up Later'}</option>
+                  <option value="ClosedWon">{language === 'ar' ? 'تم توقيع العقد بنجاح (صفقة رابحة)' : 'Closed Won'}</option>
+                  <option value="ClosedLost">{language === 'ar' ? 'صفقة ملغاة' : 'Closed Lost'}</option>
+                  <option value="NotInterested">{language === 'ar' ? 'غير مهتم' : 'Not Interested'}</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {language === 'ar' ? 'الإجراء التالي المتفق عليه' : 'Next Action / Step'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={language === 'ar' ? 'مثال: إرسال عرض مالي، تنسيق اجتماع ديمو...' : 'e.g. Send proposal...'}
+                    value={visitForm.nextAction}
+                    onChange={e => setVisitForm({ ...visitForm, nextAction: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#00B4D8]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {language === 'ar' ? 'موعد المتابعة القادم' : 'Next Follow-up Date'}
+                  </label>
+                  <input
+                    type="date"
+                    value={visitForm.nextFollowUpDate}
+                    onChange={e => setVisitForm({ ...visitForm, nextFollowUpDate: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-[#00B4D8]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={visitForm.decisionMakerReached}
+                    onChange={e => setVisitForm({ ...visitForm, decisionMakerReached: e.target.checked })}
+                    className="rounded text-cyan-600 focus:ring-cyan-500"
+                  />
+                  <span>{language === 'ar' ? 'تمت مقابلة صاحب القرار الرئيسي في الجلسة' : 'Reached Key Decision Maker'}</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {language === 'ar' ? 'ملاحظات تفصيلية عن الزيارة' : 'Visit Notes'}
+                </label>
+                <textarea
+                  rows={2}
+                  value={visitForm.notes}
+                  onChange={e => setVisitForm({ ...visitForm, notes: e.target.value })}
+                  placeholder={language === 'ar' ? 'انطباعات المدرسة، التحديات التي تم طرحها...' : 'School feedback, challenges...'}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#00B4D8]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={isSubmittingVisit}
+                  onClick={() => setIsLogVisitModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  {t('common.cancel') || (language === 'ar' ? 'إلغاء' : 'Cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingVisit}
+                  className="px-5 py-2 bg-[#009688] hover:bg-[#00897B] disabled:bg-slate-400 text-white rounded-xl font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  {isSubmittingVisit && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  <span>
+                    {isSubmittingVisit 
+                      ? (language === 'ar' ? 'جاري التوثيق...' : 'Saving...') 
+                      : (language === 'ar' ? 'توثيق الزيارة نهائياً' : 'Log Visit')}
+                  </span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

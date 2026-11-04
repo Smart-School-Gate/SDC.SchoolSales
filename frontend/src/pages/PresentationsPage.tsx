@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  SlideMultiImagesView,
+  parseSlideImages,
+  serializeSlideImages,
+  SlideImageItem
+} from '../components/presentation/SlideMultiImagesView';
+import {
   Plus,
   Save,
   Maximize2,
@@ -22,13 +28,30 @@ import {
   ShieldCheck,
   Calendar,
   GraduationCap,
-  Users
+  Users,
+  Globe,
+  Share2,
+  Copy,
+  ExternalLink,
+  RefreshCw,
+  BarChart2,
+  Eye,
+  Check,
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { ExecutivePresentationView } from '../components/presentation/ExecutivePresentationView';
 import { api } from '../services/api';
-import { PresentationDto, PresentationSlideDto, SlideCategory } from '../types';
+import {
+  PresentationDto,
+  PresentationSlideDto,
+  SlideCategory,
+  PresentationAnalyticsSummaryDto,
+  SchoolDto,
+  ProductInterest
+} from '../types';
 
 // Curated High-Resolution Default Slide Images matching the 8 Core Sales Deck topics
 const DEFAULT_SLIDE_IMAGES = [
@@ -36,10 +59,16 @@ const DEFAULT_SLIDE_IMAGES = [
   'https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1000&auto=format&fit=crop', // Slide 2: Challenges
   'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop', // Slide 3: Smart School
   'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=1000&auto=format&fit=crop', // Slide 4: Mobile App
-  'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?q=80&w=1000&auto=format&fit=crop', // Slide 5: Academy
-  'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=1000&auto=format&fit=crop', // Slide 6: Security & Cloud
-  'https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=1000&auto=format&fit=crop', // Slide 7: Roadmap
-  'https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1000&auto=format&fit=crop', // Slide 8: Live Demo
+  JSON.stringify([
+    { url: '/slides/connected-parent.png', title: 'Parent', subtitle: 'تجربة ولي الأمر', caption: 'Parent' },
+    { url: '/slides/connected-student.png', title: 'Student', subtitle: 'تجربة الطالب', caption: 'Student' },
+    { url: '/slides/connected-supervisor.png', title: 'Supervisor', subtitle: 'أدوات المشرف', caption: 'Supervisor' },
+    { url: '/slides/connected-teacher.png', title: 'Teacher', subtitle: 'بيئة عمل المعلم', caption: 'Teacher' }
+  ]), // Slide 5: One Connected School Community (4 Cards matching mockup)
+  'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?q=80&w=1000&auto=format&fit=crop', // Slide 6: Academy
+  'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=1000&auto=format&fit=crop', // Slide 7: Security & Cloud
+  'https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=1000&auto=format&fit=crop', // Slide 8: Roadmap
+  'https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1000&auto=format&fit=crop', // Slide 9: Live Demo
 ];
 
 // High-Fidelity Custom Artwork adapted to Main Dashboard Light Palette
@@ -281,12 +310,38 @@ export const PresentationsPage: React.FC = () => {
     contentEn: '',
     pointsAr: '',
     pointsEn: '',
-    imageUrl: '',
+    images: [{ url: '', caption: '' }] as SlideImageItem[],
     category: 'CompanyOverview' as SlideCategory,
     isEnabled: true,
     notes: ''
   });
   const [submitting, setSubmitting] = useState(false);
+
+  // Schools for custom presentation binding
+  const [schools, setSchools] = useState<SchoolDto[]>([]);
+  const [loadingSchools, setLoadingSchools] = useState(false);
+
+  // Create Presentation Modal
+  const [isCreatePresModalOpen, setIsCreatePresModalOpen] = useState(false);
+  const [createPresForm, setCreatePresForm] = useState({
+    title: '',
+    description: '',
+    isTemplate: true,
+    schoolId: '',
+    selectedProducts: 'Both' as ProductInterest
+  });
+  const [isSubmittingCreatePres, setIsSubmittingCreatePres] = useState(false);
+
+  // Duplicate Presentation Modal
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
+  const [presToDuplicate, setPresToDuplicate] = useState<PresentationDto | null>(null);
+  const [duplicateForm, setDuplicateForm] = useState({
+    newTitle: '',
+    isCustomForSchool: false,
+    schoolId: '',
+    isTemplate: false
+  });
+  const [isSubmittingDuplicate, setIsSubmittingDuplicate] = useState(false);
 
   useEffect(() => {
     loadPresentations();
@@ -298,18 +353,144 @@ export const PresentationsPage: React.FC = () => {
     if (res.success && res.data) {
       setPresentations(res.data);
       if (res.data.length > 0) {
-        await loadFullPresentation(res.data[0].id);
+        // If current selected is still in list, keep it, else select first
+        const currentId = selectedPres?.id;
+        const target = res.data.find(p => p.id === currentId) || res.data[0];
+        await loadFullPresentation(target.id);
+      } else {
+        setSelectedPres(null);
       }
     }
     setLoading(false);
   };
 
-  const loadFullPresentation = async (id: string) => {
+  const loadSchools = async () => {
+    if (schools.length > 0) return;
+    setLoadingSchools(true);
+    try {
+      const res = await api.getSchools({ pageSize: 100 });
+      if (res.success && res.data) {
+        setSchools(res.data.items);
+      }
+    } finally {
+      setLoadingSchools(false);
+    }
+  };
+
+  const handleOpenCreatePres = () => {
+    setCreatePresForm({
+      title: '',
+      description: '',
+      isTemplate: true,
+      schoolId: '',
+      selectedProducts: 'Both'
+    });
+    setIsCreatePresModalOpen(true);
+    loadSchools();
+  };
+
+  const handleCreatePresSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createPresForm.title.trim()) return;
+    setIsSubmittingCreatePres(true);
+    try {
+      const payload = {
+        title: createPresForm.title.trim(),
+        description: createPresForm.description.trim() || undefined,
+        isTemplate: createPresForm.isTemplate,
+        schoolId: (!createPresForm.isTemplate && createPresForm.schoolId) ? createPresForm.schoolId : undefined,
+        selectedProducts: createPresForm.selectedProducts
+      };
+      const res = await api.createPresentation(payload);
+      if (res.success && res.data) {
+        setIsCreatePresModalOpen(false);
+        await loadPresentations();
+        await loadFullPresentation(res.data.id);
+        alert(language === 'ar' ? 'تم إنشاء العرض التقديمي بنجاح!' : 'Presentation created successfully!');
+      } else {
+        alert(res.message || (language === 'ar' ? 'حدث خطأ أثناء إنشاء العرض' : 'Failed to create presentation'));
+      }
+    } catch (err: any) {
+      alert(err?.message || (language === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Server error'));
+    } finally {
+      setIsSubmittingCreatePres(false);
+    }
+  };
+
+  const handleOpenDuplicate = (pres: PresentationDto) => {
+    setPresToDuplicate(pres);
+    setDuplicateForm({
+      newTitle: `${pres.title} (نسخة)`,
+      isCustomForSchool: !pres.isTemplate && !!pres.schoolId,
+      schoolId: pres.schoolId || '',
+      isTemplate: pres.isTemplate
+    });
+    setIsDuplicateModalOpen(true);
+    loadSchools();
+  };
+
+  const handleDuplicateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!presToDuplicate || isSubmittingDuplicate) return;
+    setIsSubmittingDuplicate(true);
+    try {
+      const payload = {
+        newTitle: duplicateForm.newTitle.trim() || undefined,
+        targetSchoolId: (duplicateForm.isCustomForSchool && duplicateForm.schoolId) ? duplicateForm.schoolId : undefined,
+        isTemplate: duplicateForm.isTemplate && !duplicateForm.isCustomForSchool
+      };
+      const res = await api.duplicatePresentation(presToDuplicate.id, payload);
+      if (res.success && res.data) {
+        setIsDuplicateModalOpen(false);
+        await loadPresentations();
+        await loadFullPresentation(res.data.id);
+        alert(
+          language === 'ar' 
+            ? `تم استنساخ العرض بنجاح مع كافة الشرائح (${res.data.slidesCount || res.data.slides?.length || 0} شريحة)!` 
+            : 'Presentation and all slides duplicated successfully!'
+        );
+      } else {
+        alert(res.message || (language === 'ar' ? 'حدث خطأ أثناء نسخ العرض' : 'Failed to duplicate presentation'));
+      }
+    } catch (err: any) {
+      alert(err?.message || (language === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Server error'));
+    } finally {
+      setIsSubmittingDuplicate(false);
+    }
+  };
+
+  const handleDeletePresentation = async (pres: PresentationDto) => {
+    if (pres.isTemplate && presentations.filter(p => p.isTemplate).length <= 1) {
+      alert(language === 'ar' ? 'لا يمكن حذف القالب الرئيسي الوحيد في النظام.' : 'Cannot delete the only master template.');
+      return;
+    }
+    if (!window.confirm(language === 'ar' ? `هل أنت متأكد من حذف العرض "${pres.title}" وكافة الشرائح التابعة له؟` : `Delete presentation "${pres.title}" and all its slides?`)) {
+      return;
+    }
+    const res = await api.deletePresentation(pres.id);
+    if (res.success) {
+      await loadPresentations();
+      alert(language === 'ar' ? 'تم حذف العرض بنجاح.' : 'Presentation deleted.');
+    } else {
+      alert(res.message || (language === 'ar' ? 'فشل حذف العرض.' : 'Failed to delete presentation.'));
+    }
+  };
+
+  const loadFullPresentation = async (id: string, targetSlideId?: string, isSwitchingPresentation: boolean = false) => {
     const res = await api.getPresentationById(id);
     if (res.success && res.data) {
       setSelectedPres(res.data);
       if (res.data.slides.length > 0) {
-        setSelectedSlideId(res.data.slides[0].id);
+        if (targetSlideId && res.data.slides.some(s => s.id === targetSlideId)) {
+          setSelectedSlideId(targetSlideId);
+        } else if (!isSwitchingPresentation && selectedSlideId && res.data.slides.some(s => s.id === selectedSlideId)) {
+          // Keep current selected slide
+          setSelectedSlideId(selectedSlideId);
+        } else {
+          setSelectedSlideId(res.data.slides[0].id);
+        }
+      } else {
+        setSelectedSlideId(null);
       }
     }
   };
@@ -323,7 +504,7 @@ export const PresentationsPage: React.FC = () => {
       contentEn: '',
       pointsAr: '',
       pointsEn: '',
-      imageUrl: '',
+      images: [{ url: '', caption: '' }],
       category: 'CompanyOverview',
       isEnabled: true,
       notes: ''
@@ -348,6 +529,8 @@ export const PresentationsPage: React.FC = () => {
       // Ignored
     }
 
+    const parsedImages = parseSlideImages(slide.imageUrl);
+
     setSlideForm({
       slideTitleAr: slide.slideTitleAr,
       slideTitleEn: slide.slideTitleEn,
@@ -355,7 +538,7 @@ export const PresentationsPage: React.FC = () => {
       contentEn: slide.contentEn,
       pointsAr: ptsAr,
       pointsEn: ptsEn,
-      imageUrl: slide.imageUrl || '',
+      images: parsedImages.length > 0 ? parsedImages : [{ url: '', caption: '' }],
       category: slide.category,
       isEnabled: slide.isEnabled,
       notes: slide.notes || ''
@@ -370,6 +553,9 @@ export const PresentationsPage: React.FC = () => {
 
     const pointsArList = slideForm.pointsAr.split('\n').map(s => s.trim()).filter(Boolean);
     const pointsEnList = slideForm.pointsEn.split('\n').map(s => s.trim()).filter(Boolean);
+    const serializedImages = serializeSlideImages(slideForm.images);
+
+    let preservedSlideId = editingSlide?.id;
 
     if (editingSlide) {
       await api.updateSlide(editingSlide.id, {
@@ -379,36 +565,57 @@ export const PresentationsPage: React.FC = () => {
         contentEn: slideForm.contentEn,
         keyPointsArJson: JSON.stringify(pointsArList),
         keyPointsEnJson: JSON.stringify(pointsEnList),
-        imageUrl: slideForm.imageUrl || undefined,
+        imageUrl: serializedImages || undefined,
         category: slideForm.category,
+        displayOrder: editingSlide.displayOrder,
         isEnabled: slideForm.isEnabled,
         presenterNotesAr: slideForm.notes || undefined
       });
     } else {
-      await api.addSlide(selectedPres.id, {
+      const addRes = await api.addSlide(selectedPres.id, {
         slideTitleAr: slideForm.slideTitleAr,
         slideTitleEn: slideForm.slideTitleEn,
         contentAr: slideForm.contentAr,
         contentEn: slideForm.contentEn,
         keyPointsArJson: JSON.stringify(pointsArList),
         keyPointsEnJson: JSON.stringify(pointsEnList),
-        imageUrl: slideForm.imageUrl || undefined,
+        imageUrl: serializedImages || undefined,
         category: slideForm.category,
         isEnabled: slideForm.isEnabled,
         presenterNotesAr: slideForm.notes || undefined
       });
+      if (addRes?.success && addRes.data?.id) {
+        preservedSlideId = addRes.data.id;
+      }
     }
 
     setSubmitting(false);
     setIsSlideModalOpen(false);
-    loadFullPresentation(selectedPres.id);
+    await loadFullPresentation(selectedPres.id, preservedSlideId);
+
+    // Keep user view aligned to the edited slide card
+    if (preservedSlideId) {
+      setTimeout(() => {
+        const el = document.getElementById(`slide-card-${preservedSlideId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 150);
+    }
   };
 
   const handleDeleteSlide = async (slideId: string) => {
     if (!selectedPres) return;
     if (window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف هذه الشريحة؟' : 'Delete this slide?')) {
+      let nextTargetId: string | undefined = undefined;
+      if (selectedSlideId === slideId) {
+        const remaining = selectedPres.slides.filter(s => s.id !== slideId);
+        nextTargetId = remaining[0]?.id;
+      } else {
+        nextTargetId = selectedSlideId || undefined;
+      }
       await api.deleteSlide(slideId);
-      loadFullPresentation(selectedPres.id);
+      await loadFullPresentation(selectedPres.id, nextTargetId);
     }
   };
 
@@ -417,23 +624,105 @@ export const PresentationsPage: React.FC = () => {
     const res = await api.savePresentationVersion(selectedPres.id);
     if (res.success) {
       alert(language === 'ar' ? `تم حفظ النسخة v${selectedPres.versionNumber + 1} بنجاح!` : `Snapshot v${selectedPres.versionNumber + 1} saved!`);
-      loadFullPresentation(selectedPres.id);
+      await loadFullPresentation(selectedPres.id, selectedSlideId || undefined);
     }
   };
 
-  const filteredSlides = selectedPres?.slides.filter(s => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return s.slideTitleAr?.toLowerCase().includes(term) || s.slideTitleEn?.toLowerCase().includes(term);
-  }) || [];
+  // Publishing & Analytics Handlers
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [publishExpiresAt, setPublishExpiresAt] = useState('');
+  const [publishing, setPublishing] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<PresentationAnalyticsSummaryDto | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+
+  const handlePublishDeck = async () => {
+    if (!selectedPres) return;
+    setPublishing(true);
+    try {
+      const res = await api.publishPresentation(selectedPres.id, {
+        expiresAtUtc: publishExpiresAt ? new Date(publishExpiresAt).toISOString() : undefined,
+        regenerateToken: false
+      });
+      if (res.success) {
+        setIsPublishModalOpen(false);
+        await loadFullPresentation(selectedPres.id, selectedSlideId || undefined);
+        alert(language === 'ar' ? 'تم نشر العرض وتحديث الرابط العام بنجاح!' : 'Presentation published successfully!');
+      } else {
+        alert(res.message || 'فشل نشر العرض');
+      }
+    } catch (err: any) {
+      alert(err.message || 'خطأ أثناء نشر العرض');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const handleUnpublishDeck = async () => {
+    if (!selectedPres) return;
+    if (!window.confirm(language === 'ar' ? 'هل أنت متأكد من إلغاء نشر العرض؟ سيتوقف الرابط العام عن العمل فوراً.' : 'Are you sure you want to revoke public access?')) {
+      return;
+    }
+    const res = await api.unpublishPresentation(selectedPres.id);
+    if (res.success) {
+      await loadFullPresentation(selectedPres.id, selectedSlideId || undefined);
+      alert(language === 'ar' ? 'تم إلغاء النشر وإيقاف الوصول العام.' : 'Presentation access revoked.');
+    }
+  };
+
+  const handleRegenerateToken = async () => {
+    if (!selectedPres) return;
+    if (!window.confirm(language === 'ar' ? 'تجديد الرابط سيؤدي لإبطال الرابط السابق فوراً. هل تريد المتابعة؟' : 'Regenerating the link will invalidate previous links. Continue?')) {
+      return;
+    }
+    const res = await api.regenerateShareToken(selectedPres.id);
+    if (res.success) {
+      await loadFullPresentation(selectedPres.id, selectedSlideId || undefined);
+      alert(language === 'ar' ? 'تم تجديد الرابط العام بنجاح!' : 'Share link regenerated!');
+    }
+  };
+
+  const handleCopyPublicLink = () => {
+    if (!selectedPres?.shareToken) return;
+    const url = `${window.location.origin}/p/${selectedPres.shareToken}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const handleOpenAnalytics = async () => {
+    if (!selectedPres) return;
+    setLoadingAnalytics(true);
+    setIsAnalyticsModalOpen(true);
+    try {
+      const res = await api.getPresentationAnalytics(selectedPres.id);
+      if (res.success && res.data) {
+        setAnalyticsData(res.data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
+  const filteredSlides = (selectedPres?.slides || [])
+    .slice()
+    .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+    .filter(s => {
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      return s.slideTitleAr?.toLowerCase().includes(term) || s.slideTitleEn?.toLowerCase().includes(term);
+    });
 
   return (
-    <div className="min-h-screen bg-[#F0F4F9] text-slate-800 p-4 sm:p-6 space-y-5 select-none font-sans" dir="ltr">
+    <div className="min-h-screen bg-[#F0F4F9] text-slate-800 p-3 sm:p-6 space-y-4 sm:space-y-5 select-none font-sans w-full max-w-full overflow-x-hidden min-w-0" dir="ltr">
       
       {/* ======================================================== */}
       {/* 1. TOP HEADER IN MAIN DASHBOARD PALETTE                  */}
       {/* ======================================================== */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3 sm:gap-4 w-full max-w-full min-w-0 overflow-hidden">
         
         {/* LEFT: Rootaca Logo & Title */}
         <div className="flex items-center gap-3 shrink-0">
@@ -460,8 +749,32 @@ export const PresentationsPage: React.FC = () => {
 
         {/* CENTER: Action Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Add Slide Button */}
+          {/* Create New Presentation Button */}
           {(isSuperAdmin || isSalesManager) && (
+            <button
+              onClick={handleOpenCreatePres}
+              className="bg-[#009688] hover:bg-[#00897B] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              title="إنشاء ملف عرض تقديمي جديد"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>إضافة عرض جديد</span>
+            </button>
+          )}
+
+          {/* Duplicate Current Deck Button */}
+          {(isSuperAdmin || isSalesManager) && selectedPres && (
+            <button
+              onClick={() => handleOpenDuplicate(selectedPres)}
+              className="bg-white border border-cyan-300 hover:bg-cyan-50/60 text-[#00838F] font-bold text-xs px-4 py-2.5 rounded-xl shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              title={`نسخ هذا العرض بالكامل مع كافة الشرائح التابعة له (${selectedPres.slidesCount} شريحة)`}
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>نسخ هذا العرض بالكامل</span>
+            </button>
+          )}
+
+          {/* Add Slide Button */}
+          {(isSuperAdmin || isSalesManager) && selectedPres && (
             <button
               onClick={handleOpenAddSlide}
               className="bg-[#00B4D8] hover:bg-cyan-600 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
@@ -479,6 +792,32 @@ export const PresentationsPage: React.FC = () => {
             >
               <Save className="w-3.5 h-3.5" />
               <span>حفظ نسخة v{selectedPres.versionNumber + 1}</span>
+            </button>
+          )}
+
+          {/* Publish / Share Button in Header */}
+          {(isSuperAdmin || isSalesManager) && selectedPres && (
+            <button
+              onClick={() => setIsPublishModalOpen(true)}
+              className={`font-bold text-xs px-4 py-2.5 rounded-xl shadow-2xs transition-colors flex items-center gap-2 cursor-pointer border ${
+                selectedPres.isPublished
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5 text-cyan-600" />
+              <span>{selectedPres.isPublished ? `منشور (v${selectedPres.publishedVersionNumber})` : 'نشر للجمهور'}</span>
+            </button>
+          )}
+
+          {/* Analytics Button in Header if published */}
+          {selectedPres?.isPublished && (
+            <button
+              onClick={handleOpenAnalytics}
+              className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl shadow-2xs transition-colors flex items-center gap-2 cursor-pointer"
+            >
+              <BarChart2 className="w-3.5 h-3.5 text-cyan-600" />
+              <span>الإحصائيات</span>
             </button>
           )}
 
@@ -522,41 +861,224 @@ export const PresentationsPage: React.FC = () => {
       {/* ======================================================== */}
       {/* 2. MAIN WORKSPACE (LEFT: SIDEBAR | RIGHT: SLIDES GRID)   */}
       {/* ======================================================== */}
-      <div className="flex flex-col lg:flex-row gap-5 items-start">
+      <div className="flex flex-col lg:flex-row gap-5 items-start w-full max-w-full min-w-0">
         
         {/* LEFT COLUMN: Presentations List matching Screenshot */}
         <div className="w-full lg:w-72 shrink-0 space-y-3.5" dir="rtl">
-          <h2 className="text-sm font-black text-slate-900 px-1">
-            العروض التقديمية
-          </h2>
-
-          <div className="space-y-2">
-            {/* Active Selected Presentation Card */}
-            {selectedPres && (
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-sm font-black text-slate-900">
+              العروض التقديمية ({presentations.length})
+            </h2>
+            {(isSuperAdmin || isSalesManager) && (
               <button
                 type="button"
-                className="w-full text-right p-3.5 rounded-2xl transition-all cursor-pointer flex items-start gap-3 border-2 border-[#00B4D8] bg-white text-slate-900 shadow-md shadow-cyan-500/10"
+                onClick={handleOpenCreatePres}
+                className="text-xs font-bold text-[#00838F] hover:text-cyan-700 flex items-center gap-1 cursor-pointer bg-cyan-50 hover:bg-cyan-100 px-2.5 py-1 rounded-lg transition-colors"
+                title="إضافة عرض تقديمي جديد"
               >
-                <FileText className="w-5 h-5 text-[#00838F] shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold leading-snug text-slate-900">
-                    {selectedPres.title}
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-1 font-mono">
-                    {selectedPres.isTemplate ? 'قالب عام' : 'مخصص'} • {selectedPres.slidesCount} شريحة
-                  </div>
-                </div>
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <span>عرض جديد</span>
               </button>
             )}
           </div>
+
+          {/* List of all presentations */}
+          <div className="space-y-2 max-h-[460px] overflow-y-auto pe-1">
+            {presentations.map(p => {
+              const isSelected = selectedPres?.id === p.id;
+              return (
+                <div
+                  key={p.id}
+                  className={`w-full text-right p-3 rounded-2xl transition-all flex items-start gap-2.5 border ${
+                    isSelected
+                      ? 'border-2 border-[#00B4D8] bg-white text-slate-900 shadow-md shadow-cyan-500/10'
+                      : 'border-slate-200/80 bg-white hover:border-slate-300 text-slate-700'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => loadFullPresentation(p.id, undefined, true)}
+                    className="flex-1 text-right min-w-0 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[#00838F]' : 'text-slate-400'}`} />
+                      <span className={`text-xs font-bold truncate ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
+                        {p.title}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1 font-mono flex items-center gap-2">
+                      <span>{p.isTemplate ? 'قالب عام' : 'مخصص'}</span>
+                      <span>•</span>
+                      <span>{p.slidesCount} شريحة</span>
+                      {p.isPublished && (
+                        <span className="text-emerald-600 font-bold">منشور</span>
+                      )}
+                    </div>
+                  </button>
+
+                  {/* Actions: Duplicate & Delete */}
+                  {(isSuperAdmin || isSalesManager) && (
+                    <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDuplicate(p);
+                        }}
+                        title={`نسخ العرض "${p.title}" بجميع الشرائح التابعة له`}
+                        className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      {(!p.isTemplate || presentations.filter(x => x.isTemplate).length > 1) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePresentation(p);
+                          }}
+                          title={`حذف العرض "${p.title}"`}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+            {/* Public Sharing & Publishing Card */}
+            {selectedPres && (
+              <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Globe className="w-4 h-4 text-cyan-600" />
+                    <span>النشر والرابط العام</span>
+                  </span>
+                  {selectedPres.isPublished ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>منشور (v{selectedPres.publishedVersionNumber})</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                      <span>مسودة غير منشورة</span>
+                    </span>
+                  )}
+                </div>
+
+                {selectedPres.isPublished ? (
+                  <div className="space-y-2.5">
+                    <div className="text-[11px] text-slate-500 leading-snug">
+                      النسخة المنشورة حالياً معزولة وآمنة. التعديلات اللاحقة لا تظهر للجمهور إلا عند إعادة النشر.
+                    </div>
+
+                    {selectedPres.publishedAtUtc && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono">
+                        <Clock className="w-3 h-3" />
+                        <span>آخر نشر: {new Date(selectedPres.publishedAtUtc).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      </div>
+                    )}
+
+                    {/* Share Link Field */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-slate-600">رابط المشاركة الآمن:</span>
+                      <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl p-1 text-slate-700">
+                        <input
+                          type="text"
+                          readOnly
+                          value={`${window.location.origin}/p/${selectedPres.shareToken}`}
+                          className="w-full bg-transparent px-2 text-[11px] font-mono select-all focus:outline-none text-slate-700 truncate"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleCopyPublicLink}
+                          className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-700 text-xs font-bold flex items-center gap-1 transition shrink-0 cursor-pointer shadow-2xs"
+                          title="نسخ الرابط"
+                        >
+                          {copiedLink ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          <span className="text-[10px]">{copiedLink ? 'تم النسخ' : 'نسخ'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                      <a
+                        href={`/p/${selectedPres.shareToken}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="py-1.5 px-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition"
+                      >
+                        <ExternalLink className="w-3 h-3 text-cyan-600" />
+                        <span>معاينة كزائر</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={handleOpenAnalytics}
+                        className="py-1.5 px-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition cursor-pointer"
+                      >
+                        <BarChart2 className="w-3 h-3 text-cyan-600" />
+                        <span>الإحصائيات</span>
+                      </button>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setIsPublishModalOpen(true)}
+                        className="w-full py-1.5 px-3 bg-[#00B4D8] hover:bg-cyan-600 text-white rounded-xl text-[11px] font-black transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>نشر التعديلات كنسخة جديدة</span>
+                      </button>
+
+                      <div className="flex items-center justify-between text-[11px] pt-1">
+                        <button
+                          type="button"
+                          onClick={handleRegenerateToken}
+                          className="text-slate-500 hover:text-cyan-700 underline cursor-pointer text-[10px]"
+                        >
+                          تجديد الرابط
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleUnpublishDeck}
+                          className="text-rose-600 hover:text-rose-700 underline cursor-pointer text-[10px]"
+                        >
+                          إلغاء النشر
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      هذا العرض غير منشور حالياً. لن يتمكن أي شخص خارجي من الاطلاع على الشرائح حتى تقوم بنشره وتوليد رابط عام.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsPublishModalOpen(true)}
+                      className="w-full py-2 px-3 bg-[#00B4D8] hover:bg-cyan-600 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>نشر العرض وتوليد الرابط العام</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
         </div>
 
         {/* RIGHT COLUMN: Main Slides Grid Canvas */}
         <div className="flex-1 w-full space-y-3.5 min-w-0">
           
           {/* Top row of canvas: Search bar */}
-          <div className="flex items-center justify-start">
-            <div className="relative w-80" dir="rtl">
+          <div className="flex items-center justify-start w-full">
+            <div className="relative w-full sm:w-80 max-w-full" dir="rtl">
               <input
                 type="text"
                 placeholder="...بحث في الشرائح"
@@ -571,13 +1093,13 @@ export const PresentationsPage: React.FC = () => {
           {/* 3-Column Grid of Slide Cards in Light Mode (RTL ordering) */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5" dir="rtl">
             {filteredSlides.map((slide, idx) => {
-              const isFirst = idx === 0;
-              const isSelected = selectedSlideId === slide.id || isFirst;
+              const isSelected = selectedSlideId ? selectedSlideId === slide.id : idx === 0;
               const effectiveImgUrl = slide.imageUrl || DEFAULT_SLIDE_IMAGES[idx % DEFAULT_SLIDE_IMAGES.length];
 
               return (
                 <div
                   key={slide.id}
+                  id={`slide-card-${slide.id}`}
                   onClick={() => setSelectedSlideId(slide.id)}
                   className={`bg-white rounded-2xl p-4 sm:p-4.5 flex flex-col justify-between transition-all duration-200 group relative min-h-[300px] sm:min-h-[320px] md:min-h-[330px] lg:min-h-[345px] xl:min-h-[360px] cursor-pointer border ${
                     isSelected
@@ -585,26 +1107,17 @@ export const PresentationsPage: React.FC = () => {
                       : 'border-slate-200/90 hover:border-cyan-400 shadow-2xs'
                   }`}
                 >
-                  {/* Top Illustration or Real Image Area */}
+                  {/* Top Illustration or Real Multi-Image Area */}
                   {effectiveImgUrl ? (
-                    <div className="w-full aspect-[16/10] min-h-[220px] sm:min-h-[235px] md:min-h-[245px] lg:min-h-[255px] xl:min-h-[270px] 2xl:min-h-[285px] rounded-xl overflow-hidden border border-slate-200/90 bg-slate-100 relative group/img mb-3 shadow-2xs">
-                      <img
-                        src={effectiveImgUrl}
-                        alt={slide.slideTitleAr}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          const fallback = DEFAULT_SLIDE_IMAGES[idx % DEFAULT_SLIDE_IMAGES.length];
-                          if (target.src !== fallback) {
-                            target.src = fallback;
-                          }
-                        }}
+                    <div className="w-full aspect-[16/10] min-h-[240px] sm:min-h-[260px] md:min-h-[280px] lg:min-h-[295px] xl:min-h-[310px] 2xl:min-h-[330px] rounded-xl overflow-hidden relative group/img mb-3 shadow-2xs flex flex-col">
+                      <SlideMultiImagesView
+                        images={parseSlideImages(slide.imageUrl, DEFAULT_SLIDE_IMAGES[idx % DEFAULT_SLIDE_IMAGES.length])}
+                        headerTitle={slide.slideTitleEn || slide.slideTitleAr}
+                        headerSubtitle={slide.slideTitleAr}
+                        altTitle={slide.slideTitleAr}
+                        isCardPreview={true}
+                        className="w-full h-full flex-1 min-h-0"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent flex items-end p-3">
-                        <span className="text-xs sm:text-[13px] font-bold text-white leading-snug drop-shadow-xs line-clamp-2">
-                          {slide.slideTitleAr}
-                        </span>
-                      </div>
                     </div>
                   ) : (
                     <SlideArtIllustration
@@ -766,68 +1279,174 @@ export const PresentationsPage: React.FC = () => {
                 />
               </div>
 
-              {/* Image URL & Live Preview Field */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  رابط صورة الشريحة (Image URL)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={slideForm.imageUrl}
-                    onChange={e => setSlideForm({ ...slideForm, imageUrl: e.target.value })}
-                    placeholder="https://images.unsplash.com/... أو أدخل رابط الصورة"
-                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:border-cyan-500 focus:bg-white focus:outline-none font-mono"
-                  />
-                  {slideForm.imageUrl && (
+              {/* Multi-Image Section (Up to 4 images with individual captions) */}
+              <div className="space-y-3 p-3.5 bg-slate-50 border border-slate-200/90 rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800">
+                      صور الشريحة (حتى 4 صور مع عنوان مختصر لكل صورة)
+                    </label>
+                    <span className="text-[10px] text-slate-400">
+                      تتوزع المساحة تلقائياً: صورة واحدة (كامل العرض)، صورتان (جنباً إلى جنب)، 3 صور (ثلاثة أعمدة)، 4 صور (شبكة 2×2)
+                    </span>
+                  </div>
+
+                  {slideForm.images.length < 4 && (
                     <button
                       type="button"
-                      onClick={() => setSlideForm({ ...slideForm, imageUrl: '' })}
-                      className="px-3 py-1 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer"
-                      title="إزالة الصورة"
+                      onClick={() => setSlideForm({
+                        ...slideForm,
+                        images: [...slideForm.images, { url: '', caption: '' }]
+                      })}
+                      className="px-2.5 py-1 bg-cyan-50 hover:bg-cyan-100 text-[#00838F] border border-cyan-200 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
                     >
-                      إزالة
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>إضافة صورة ({slideForm.images.length}/4)</span>
                     </button>
                   )}
                 </div>
 
-                {/* Live Image Preview */}
-                {slideForm.imageUrl && (
-                  <div className="mt-2.5 relative rounded-2xl overflow-hidden border border-slate-200 h-36 bg-slate-900 group">
-                    <img
-                      src={slideForm.imageUrl}
-                      alt="معاينة الصورة"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000&auto=format&fit=crop';
-                      }}
-                    />
-                    <div className="absolute bottom-2 start-2 bg-black/75 backdrop-blur-xs text-white text-[10px] font-mono px-2.5 py-1 rounded-lg">
-                      معاينة الصورة المحددة
-                    </div>
-                  </div>
-                )}
+                {/* Images list inputs */}
+                <div className="space-y-2.5">
+                  {slideForm.images.map((img, iIdx) => (
+                    <div
+                      key={iIdx}
+                      className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs space-y-2"
+                    >
+                      <div className="flex items-center justify-between pb-1 border-b border-slate-100 text-[11px] font-bold text-slate-700">
+                        <span className="flex items-center gap-1.5 text-cyan-800">
+                          <span className="w-4 h-4 rounded-full bg-cyan-100 text-cyan-800 flex items-center justify-center text-[10px]">
+                            {iIdx + 1}
+                          </span>
+                          <span>الصورة {iIdx + 1} {iIdx === 0 ? '(الرئيسية)' : ''}</span>
+                        </span>
 
-                {/* Quick Sample Image Presets */}
-                <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] text-slate-400 font-semibold">نماذج سريعة:</span>
+                        {slideForm.images.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = slideForm.images.filter((_, idx) => idx !== iIdx);
+                              setSlideForm({ ...slideForm, images: updated.length > 0 ? updated : [{ url: '', caption: '' }] });
+                            }}
+                            className="text-slate-400 hover:text-rose-600 text-[10px] flex items-center gap-0.5 cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>حذف</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                            رابط الصورة (URL) *
+                          </label>
+                          <input
+                            type="url"
+                            value={img.url}
+                            onChange={e => {
+                              const updated = [...slideForm.images];
+                              updated[iIdx] = { ...updated[iIdx], url: e.target.value };
+                              setSlideForm({ ...slideForm, images: updated });
+                            }}
+                            placeholder="https://... رابط الصورة المباشر"
+                            className="w-full text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:bg-white focus:outline-none focus:border-cyan-500 font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                            عنوان مختصر يظهر أسفل الصورة
+                          </label>
+                          <input
+                            type="text"
+                            value={img.caption || ''}
+                            onChange={e => {
+                              const updated = [...slideForm.images];
+                              updated[iIdx] = { ...updated[iIdx], caption: e.target.value };
+                              setSlideForm({ ...slideForm, images: updated });
+                            }}
+                            placeholder="مثال: الواجهة الرئيسية، المختبر، الفصول..."
+                            className="w-full text-xs px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:bg-white focus:outline-none focus:border-cyan-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Quick Presets to fill current or new slot */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                  <span className="text-[10px] text-slate-400 font-semibold">نماذج صور سريعة:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSlideForm({
+                        ...slideForm,
+                        images: [
+                          { url: '/slides/connected-parent.png', title: 'Parent', subtitle: 'تجربة ولي الأمر', caption: 'Parent' },
+                          { url: '/slides/connected-student.png', title: 'Student', subtitle: 'تجربة الطالب', caption: 'Student' },
+                          { url: '/slides/connected-supervisor.png', title: 'Supervisor', subtitle: 'أدوات المشرف', caption: 'Supervisor' },
+                          { url: '/slides/connected-teacher.png', title: 'Teacher', subtitle: 'بيئة عمل المعلم', caption: 'Teacher' }
+                        ]
+                      });
+                    }}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-800 transition border border-cyan-300 cursor-pointer shadow-2xs"
+                  >
+                    🌟 طاقم المجتمع المدرسي (4 أدوار)
+                  </button>
                   {[
-                    { label: 'لوحة تحكم (Dashboard)', url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000&auto=format&fit=crop' },
-                    { label: 'طلاب ومدرسة', url: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1000&auto=format&fit=crop' },
-                    { label: 'تطبيق موبايل', url: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=1000&auto=format&fit=crop' },
-                    { label: 'معمل روبوتكس', url: 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?q=80&w=1000&auto=format&fit=crop' },
-                    { label: 'سيرفر وأمان سحابي', url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=1000&auto=format&fit=crop' }
+                    { label: 'لوحة التحكم', url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000&auto=format&fit=crop', cap: 'لوحة القيادة المدرسية' },
+                    { label: 'طلاب وفصول', url: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1000&auto=format&fit=crop', cap: 'الفصول التفاعلية' },
+                    { label: 'تطبيق موبايل', url: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=1000&auto=format&fit=crop', cap: 'تطبيق ولي الأمر' },
+                    { label: 'معمل روبوتكس', url: 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?q=80&w=1000&auto=format&fit=crop', cap: 'أكاديمية الذكاء الاصطناعي' }
                   ].map(preset => (
                     <button
                       key={preset.label}
                       type="button"
-                      onClick={() => setSlideForm({ ...slideForm, imageUrl: preset.url })}
-                      className="text-[10px] font-medium px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-cyan-50 hover:text-cyan-700 text-slate-600 transition border border-slate-200 cursor-pointer"
+                      onClick={() => {
+                        const emptyIdx = slideForm.images.findIndex(img => !img.url.trim());
+                        if (emptyIdx >= 0) {
+                          const updated = [...slideForm.images];
+                          updated[emptyIdx] = { url: preset.url, caption: preset.cap };
+                          setSlideForm({ ...slideForm, images: updated });
+                        } else if (slideForm.images.length < 4) {
+                          setSlideForm({
+                            ...slideForm,
+                            images: [...slideForm.images, { url: preset.url, caption: preset.cap }]
+                          });
+                        } else {
+                          const updated = [...slideForm.images];
+                          updated[updated.length - 1] = { url: preset.url, caption: preset.cap };
+                          setSlideForm({ ...slideForm, images: updated });
+                        }
+                      }}
+                      className="text-[10px] font-medium px-2 py-0.5 rounded-lg bg-white hover:bg-cyan-50 hover:text-cyan-700 text-slate-600 transition border border-slate-200 cursor-pointer shadow-2xs"
                     >
-                      {preset.label}
+                      + {preset.label}
                     </button>
                   ))}
                 </div>
+
+                {/* Live Real-Time Multi-Image Layout Preview */}
+                {slideForm.images.some(x => x.url.trim()) && (
+                  <div className="pt-2 border-t border-slate-200/60 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                      <span>معاينة تقسيم الصور المباشر داخل الشريحة:</span>
+                      <span className="text-cyan-700 font-mono font-bold">
+                        {slideForm.images.filter(x => x.url.trim()).length} صورة
+                      </span>
+                    </div>
+                    <div className="h-52 w-full rounded-xl overflow-hidden relative flex flex-col">
+                      <SlideMultiImagesView
+                        images={slideForm.images.filter(x => x.url.trim())}
+                        altTitle={slideForm.slideTitleAr || 'معاينة'}
+                        isCardPreview={true}
+                        className="w-full h-full flex-1 min-h-0"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
@@ -852,7 +1471,488 @@ export const PresentationsPage: React.FC = () => {
       )}
 
       {/* ======================================================== */}
-      {/* 4. FULLSCREEN EXECUTIVE CLIENT PRESENTATION VIEWER       */}
+      {/* 4. PUBLISH PRESENTATION MODAL                            */}
+      {/* ======================================================== */}
+      {isPublishModalOpen && selectedPres && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto" dir="rtl">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl text-slate-800 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Globe className="w-5 h-5 text-cyan-600" />
+                <h3 className="text-base font-black text-slate-900">
+                  {selectedPres.isPublished ? 'إعادة نشر وتحديث العرض العام' : 'نشر العرض التقديمي للجمهور'}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsPublishModalOpen(false)} 
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 bg-cyan-50/70 border border-cyan-200 rounded-2xl space-y-1.5 text-cyan-900">
+                <div className="font-bold flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-cyan-700" />
+                  <span>عزل اللقطة المنشورة (Published Snapshot Isolation)</span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-cyan-800">
+                  سيتم أخذ لقطة معزولة غير قابلة للتعديل من الشرائح النشطة الحالية (نسخة v{selectedPres.versionNumber + 1}). التعديلات الداخلية في لوحة التحكم لن تؤثر على ما يراه الزوار في الرابط العام إلا إذا قمت بالنشر مجدداً.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-bold text-slate-700">
+                  تاريخ انتهاء صلاحية الرابط (اختياري)
+                </label>
+                <input
+                  type="datetime-local"
+                  value={publishExpiresAt}
+                  onChange={e => setPublishExpiresAt(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-[#00B4D8]"
+                />
+                
+                {/* Expiration Quick Presets */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-1.5">
+                  <span className="text-[10px] text-slate-500 font-bold">تحديد سريع:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date(Date.now() + 24 * 3600 * 1000);
+                      const pad = (n: number) => String(n).padStart(2, '0');
+                      setPublishExpiresAt(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold cursor-pointer transition"
+                  >
+                    24 ساعة
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date(Date.now() + 3 * 24 * 3600 * 1000);
+                      const pad = (n: number) => String(n).padStart(2, '0');
+                      setPublishExpiresAt(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold cursor-pointer transition"
+                  >
+                    3 أيام
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date(Date.now() + 7 * 24 * 3600 * 1000);
+                      const pad = (n: number) => String(n).padStart(2, '0');
+                      setPublishExpiresAt(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-cyan-100 hover:bg-cyan-200 text-cyan-800 text-[10px] font-bold cursor-pointer transition"
+                  >
+                    7 أيام (موصى به)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date(Date.now() + 14 * 24 * 3600 * 1000);
+                      const pad = (n: number) => String(n).padStart(2, '0');
+                      setPublishExpiresAt(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold cursor-pointer transition"
+                  >
+                    14 يوم
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date(Date.now() + 30 * 24 * 3600 * 1000);
+                      const pad = (n: number) => String(n).padStart(2, '0');
+                      setPublishExpiresAt(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold cursor-pointer transition"
+                  >
+                    30 يوم
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPublishExpiresAt('')}
+                    className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 text-[10px] font-bold cursor-pointer transition"
+                  >
+                    دائم (بدون انتهاء)
+                  </button>
+                </div>
+
+                <span className="text-[10px] text-slate-400 block pt-0.5">
+                  سيظهر عداد تنازلي نشط للزوار في العرض العام يوضح الوقت المتبقي ثانية بثانية حتى انتهاء الصلاحية.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsPublishModalOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                disabled={publishing}
+                onClick={handlePublishDeck}
+                className="px-6 py-2.5 bg-[#00B4D8] hover:bg-cyan-600 text-white text-xs font-black rounded-xl shadow-xs disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              >
+                <Globe className="w-4 h-4" />
+                <span>{publishing ? 'جاري النشر وتوليد اللقطة...' : 'تأكيد النشر للجمهور'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 5. PRESENTATION ANALYTICS MODAL                          */}
+      {/* ======================================================== */}
+      {isAnalyticsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto" dir="rtl">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl text-slate-800 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <BarChart2 className="w-5 h-5 text-cyan-600" />
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    إحصائيات تفاعل الزوار مع العرض
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-mono" dir="ltr">
+                    Public Engagement & Session Analytics
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsAnalyticsModalOpen(false)} 
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {loadingAnalytics ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-2">
+                <div className="w-8 h-8 border-3 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs text-slate-500">جاري تجميع المؤشرات...</span>
+              </div>
+            ) : analyticsData ? (
+              <div className="space-y-4">
+                {/* KPI Cards Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-center">
+                    <span className="text-[10px] text-slate-500 block font-bold">إجمالي المشاهدات</span>
+                    <span className="text-xl font-black text-slate-900 font-mono">{analyticsData.totalViews}</span>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-center">
+                    <span className="text-[10px] text-slate-500 block font-bold">جلسات الزوار الفريدة</span>
+                    <span className="text-xl font-black text-cyan-600 font-mono">{analyticsData.uniqueSessions}</span>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-center">
+                    <span className="text-[10px] text-slate-500 block font-bold">نقرات طلب الديمو</span>
+                    <span className="text-xl font-black text-emerald-600 font-mono">{analyticsData.demoCtaClicks}</span>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-center">
+                    <span className="text-[10px] text-slate-500 block font-bold">متوسط وقت الجلسة</span>
+                    <span className="text-xl font-black text-purple-600 font-mono">{analyticsData.averageDurationPerSessionSeconds}s</span>
+                  </div>
+                </div>
+
+                {/* Slide by Slide Analytics */}
+                <div className="space-y-2 pt-2">
+                  <h4 className="text-xs font-black text-slate-800">
+                    تفاعل الزوار حسب الشرائح
+                  </h4>
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                    <table className="w-full text-xs text-right">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-[11px]">
+                        <tr>
+                          <th className="p-2.5 font-bold">#</th>
+                          <th className="p-2.5 font-bold">الشريحة</th>
+                          <th className="p-2.5 font-bold text-center">المشاهدات</th>
+                          <th className="p-2.5 font-bold text-center">إجمالي الوقت</th>
+                          <th className="p-2.5 font-bold text-center">متوسط التفاعل</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {analyticsData.slideStats.map((s, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/50">
+                            <td className="p-2.5 font-mono text-slate-400">{idx + 1}</td>
+                            <td className="p-2.5 font-bold text-slate-800 max-w-[200px] truncate">{s.slideTitleAr}</td>
+                            <td className="p-2.5 font-mono text-center">{s.viewCount}</td>
+                            <td className="p-2.5 font-mono text-center text-slate-500">{s.totalDurationSeconds} ثانية</td>
+                            <td className="p-2.5 font-mono text-center font-bold text-cyan-700">{s.averageDurationSeconds} ثانية</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-xs text-slate-400">
+                لا توجد مشاهدات مسجلة لهذا العرض بعد.
+              </div>
+            )}
+
+            <div className="flex justify-end pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsAnalyticsModalOpen(false)}
+                className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* CREATE NEW PRESENTATION MODAL                            */}
+      {/* ======================================================== */}
+      {isCreatePresModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-100 my-8 text-right" dir="rtl">
+            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100">
+              <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                <Plus className="w-5 h-5 text-emerald-600" />
+                <span>إضافة عرض تقديمي جديد</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsCreatePresModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePresSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  عنوان العرض التقديمي *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="مثال: عرض مدرسة النور الدولية أو العرض التعريفي الشامل"
+                  value={createPresForm.title}
+                  onChange={e => setCreatePresForm({ ...createPresForm, title: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-[#00B4D8]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  وصف العرض / الغرض منه
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="ملاحظات مختصرة حول الجمهور المستهدف أو سيناريو العرض..."
+                  value={createPresForm.description}
+                  onChange={e => setCreatePresForm({ ...createPresForm, description: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#00B4D8]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    المنتجات المشمولة
+                  </label>
+                  <select
+                    value={createPresForm.selectedProducts}
+                    onChange={e => setCreatePresForm({ ...createPresForm, selectedProducts: e.target.value as ProductInterest })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-[#00B4D8]"
+                  >
+                    <option value="Both">كلا المنتجين (سمارت سكول + أكاديمية)</option>
+                    <option value="SmartSchool">مدرسة ROOTACA الذكية فقط</option>
+                    <option value="Academy">أكاديمية ROOTACA فقط</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    نوع العرض
+                  </label>
+                  <select
+                    value={createPresForm.isTemplate ? 'template' : 'school'}
+                    onChange={e => setCreatePresForm({ ...createPresForm, isTemplate: e.target.value === 'template' })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-[#00B4D8]"
+                  >
+                    <option value="template">قالب رئيسي عام (Template)</option>
+                    <option value="school">عرض مخصص لمدرسة محددة</option>
+                  </select>
+                </div>
+              </div>
+
+              {!createPresForm.isTemplate && (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    المدرسة المستهدفة *
+                  </label>
+                  {loadingSchools ? (
+                    <div className="text-slate-400 py-2">جاري تحميل قائمة المدارس...</div>
+                  ) : (
+                    <select
+                      required={!createPresForm.isTemplate}
+                      value={createPresForm.schoolId}
+                      onChange={e => setCreatePresForm({ ...createPresForm, schoolId: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-[#00B4D8]"
+                    >
+                      <option value="">-- اختر المدرسة --</option>
+                      {schools.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.city || ''})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={isSubmittingCreatePres}
+                  onClick={() => setIsCreatePresModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingCreatePres}
+                  className="px-5 py-2 bg-[#009688] hover:bg-[#00897B] disabled:bg-slate-400 text-white rounded-xl font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  {isSubmittingCreatePres && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  <span>{isSubmittingCreatePres ? 'جاري الإنشاء...' : 'إنشاء العرض التقديمي'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* DUPLICATE / CLONE PRESENTATION DECK MODAL                */}
+      {/* ======================================================== */}
+      {isDuplicateModalOpen && presToDuplicate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-100 my-8 text-right" dir="rtl">
+            <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100">
+              <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                <Copy className="w-5 h-5 text-[#00838F]" />
+                <span>استنساخ العرض بكافة الشرائح</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsDuplicateModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleDuplicateSubmit} className="space-y-4 text-xs">
+              <div className="bg-cyan-50/70 border border-cyan-200/80 rounded-xl p-3.5 text-cyan-900 leading-relaxed">
+                <div className="font-bold flex items-center gap-1.5 text-xs">
+                  <CheckCircle2 className="w-4 h-4 text-cyan-700" />
+                  <span>نسخ العرض بالكامل مع جميع الشرائح التابعة له</span>
+                </div>
+                <div className="text-[11px] text-slate-600 mt-1">
+                  العرض الأصلي: <strong className="text-slate-900 font-bold">{presToDuplicate.title}</strong>
+                  <br />
+                  سيتم نسخ جميع الشرائح التابعة له (<strong>{presToDuplicate.slidesCount} شريحة</strong>) بالكامل مع نصوصها وصورها ونقاطها الأساسية إلى عرض جديد مستقل.
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  عنوان النسخة الجديدة *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={duplicateForm.newTitle}
+                  onChange={e => setDuplicateForm({ ...duplicateForm, newTitle: e.target.value })}
+                  placeholder="عنوان العرض المنسوخ الجديد..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-[#00B4D8]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  وجهة النسخة
+                </label>
+                <select
+                  value={duplicateForm.isCustomForSchool ? 'school' : 'template'}
+                  onChange={e => setDuplicateForm({ ...duplicateForm, isCustomForSchool: e.target.value === 'school' })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-[#00B4D8]"
+                >
+                  <option value="template">نسخة قالب مستقلة (General Deck)</option>
+                  <option value="school">تخصيص النسخة لمدرسة محددة</option>
+                </select>
+              </div>
+
+              {duplicateForm.isCustomForSchool && (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    المدرسة المستهدفة *
+                  </label>
+                  {loadingSchools ? (
+                    <div className="text-slate-400 py-2">جاري تحميل قائمة المدارس...</div>
+                  ) : (
+                    <select
+                      required={duplicateForm.isCustomForSchool}
+                      value={duplicateForm.schoolId}
+                      onChange={e => setDuplicateForm({ ...duplicateForm, schoolId: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-[#00B4D8]"
+                    >
+                      <option value="">-- اختر المدرسة --</option>
+                      {schools.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.city || ''})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={isSubmittingDuplicate}
+                  onClick={() => setIsDuplicateModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-semibold cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingDuplicate}
+                  className="px-5 py-2 bg-[#00838F] hover:bg-[#006978] disabled:bg-slate-400 text-white rounded-xl font-bold shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  {isSubmittingDuplicate && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  <span>{isSubmittingDuplicate ? 'جاري الاستنساخ...' : `استنساخ العرض (${presToDuplicate.slidesCount} شريحة)`}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 6. FULLSCREEN EXECUTIVE CLIENT PRESENTATION VIEWER       */}
       {/* ======================================================== */}
       {isFullscreen && selectedPres && (
         <ExecutivePresentationView

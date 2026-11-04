@@ -123,10 +123,32 @@ public class PresentationsController : ControllerBase
         return CreatedAtAction(nameof(GetPresentationById), new { id = result.Data!.Id }, result);
     }
 
+    [HttpPost("{id:guid}/duplicate")]
+    public async Task<ActionResult<ApiResponse<PresentationDto>>> DuplicatePresentation(Guid id, [FromBody] DuplicatePresentationRequest? request)
+    {
+        var result = await _presentationService.DuplicatePresentationAsync(id, request);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
     [HttpPost("{templateId:guid}/duplicate-for-school/{schoolId:guid}")]
     public async Task<ActionResult<ApiResponse<PresentationDto>>> DuplicateForSchool(Guid templateId, Guid schoolId)
     {
         var result = await _presentationService.DuplicateForSchoolAsync(templateId, schoolId);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<ActionResult<ApiResponse<bool>>> DeletePresentation(Guid id)
+    {
+        var result = await _presentationService.DeletePresentationAsync(id);
         if (!result.Success)
         {
             return BadRequest(result);
@@ -182,6 +204,96 @@ public class PresentationsController : ControllerBase
     public async Task<ActionResult<ApiResponse<bool>>> SaveVersion(Guid presentationId)
     {
         var result = await _presentationService.SaveVersionAsync(presentationId);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("{presentationId:guid}/publish")]
+    public async Task<ActionResult<ApiResponse<PublishResultDto>>> Publish(Guid presentationId, [FromBody] PublishPresentationRequest? request)
+    {
+        var result = await _presentationService.PublishAsync(presentationId, request ?? new PublishPresentationRequest());
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("{presentationId:guid}/unpublish")]
+    public async Task<ActionResult<ApiResponse<bool>>> Unpublish(Guid presentationId)
+    {
+        var result = await _presentationService.UnpublishAsync(presentationId);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("{presentationId:guid}/regenerate-share-token")]
+    public async Task<ActionResult<ApiResponse<PublishResultDto>>> RegenerateShareToken(Guid presentationId)
+    {
+        var result = await _presentationService.RegenerateShareTokenAsync(presentationId);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpGet("{presentationId:guid}/analytics")]
+    public async Task<ActionResult<ApiResponse<PresentationAnalyticsSummaryDto>>> GetAnalytics(Guid presentationId)
+    {
+        var result = await _presentationService.GetAnalyticsAsync(presentationId);
+        if (!result.Success)
+        {
+            return NotFound(result);
+        }
+        return Ok(result);
+    }
+}
+
+[ApiController]
+[Route("api/v1/public/presentations")]
+[AllowAnonymous]
+public class PublicPresentationsController : ControllerBase
+{
+    private readonly IPresentationService _presentationService;
+
+    public PublicPresentationsController(IPresentationService presentationService)
+    {
+        _presentationService = presentationService;
+    }
+
+    [HttpGet("{shareToken}")]
+    public async Task<ActionResult<ApiResponse<PublicPresentationDto>>> GetPublicPresentation(string shareToken)
+    {
+        var result = await _presentationService.GetPublicPresentationAsync(shareToken);
+        if (!result.Success)
+        {
+            return NotFound(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("{shareToken}/views")]
+    public async Task<ActionResult<ApiResponse<bool>>> RecordViewEvent(string shareToken, [FromBody] RecordViewEventRequest request)
+    {
+        var result = await _presentationService.RecordViewEventAsync(shareToken, request);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("{shareToken}/inquiry")]
+    public async Task<ActionResult<ApiResponse<PublicLeadInquiryResultDto>>> SubmitInquiry(string shareToken, [FromBody] PublicLeadInquiryRequest request)
+    {
+        var result = await _presentationService.SubmitPublicInquiryAsync(shareToken, request);
         if (!result.Success)
         {
             return BadRequest(result);

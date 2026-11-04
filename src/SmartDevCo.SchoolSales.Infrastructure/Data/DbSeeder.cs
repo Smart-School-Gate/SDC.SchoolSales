@@ -27,6 +27,7 @@ public partial class DbSeeder
         await SeedKnowledgeBaseAsync();
         await SeedPresentationTemplateAsync();
         await UpdateBrandingAsync();
+        await UpdateSlide5FourCardsAsync();
         await SeedSchoolIntelligenceAsync();
         await SeedOfficialDiscoveryQuestionnaireAsync();
     }
@@ -398,132 +399,228 @@ public partial class DbSeeder
 
     private async Task SeedPresentationTemplateAsync()
     {
-        if (await _db.Presentations.AnyAsync(p => p.IsTemplate)) return;
-
         var superAdmin = await _db.Users.FirstAsync();
 
-        var presentation = new Presentation
-        {
-            Title = "Rootaca Sales Deck: ROOTACA Smart School & Academy",
-            Description = "العرض التقديمي الشامل لتعريف المدارس والمراكز التعليمية بحلول روتاكا Rootaca",
-            IsTemplate = true,
-            SelectedProducts = ProductInterest.Both,
-            VersionNumber = 1,
-            CreatedByUserId = superAdmin.Id
-        };
-        _db.Presentations.Add(presentation);
-        await _db.SaveChangesAsync();
+        var presentation = await _db.Presentations
+            .Include(p => p.Slides)
+            .FirstOrDefaultAsync(p => p.IsTemplate);
 
-        var slides = new List<PresentationSlide>
+        if (presentation == null)
         {
-            new()
+            presentation = new Presentation
             {
-                PresentationId = presentation.Id,
-                Category = SlideCategory.CompanyOverview,
-                SlideTitleAr = "من نحن — شركة روتاكا Rootaca",
-                SlideTitleEn = "About Rootaca — Empowering Education",
-                ContentAr = "شركة رائدة في تطوير الحلول البرمجية التعليمية المتكاملة، نساعد المدارس والمؤسسات الأكاديمية في الشرق الأوسط وشمال أفريقيا على تحقيق التحول الرقمي الكامل.",
-                ContentEn = "A leading educational software engineering house providing next-generation ERP and digital learning platforms for schools and academies across the MENA region.",
-                KeyPointsArJson = "[\"حلول سحابية حديثة وآمنة\", \"فريق دعم واستشارات متخصص\", \"خبرة عميقة باللوائح التعليمية المحلية\"]",
-                KeyPointsEnJson = "[\"Modern cloud-native architecture\", \"Dedicated local support & consulting team\", \"Deep alignment with regional education standards\"]",
-                DisplayOrder = 1,
-                IsEnabled = true
-            },
-            new()
+                Title = "هيكل عرض ROOTACA للمدارس — العرض الأساسي الشامل",
+                Description = "العرض التقديمي الأساسي الشامل لشركة SmartDevCo ومنظومة ROOTACA للمدارس الذكية والأكاديمية، يتم استنساخه وتخصيصه لكل مدرسة.",
+                IsTemplate = true,
+                SelectedProducts = ProductInterest.Both,
+                VersionNumber = 1,
+                CreatedByUserId = superAdmin.Id
+            };
+            _db.Presentations.Add(presentation);
+            await _db.SaveChangesAsync();
+        }
+        else
+        {
+            presentation.Title = "هيكل عرض ROOTACA للمدارس — العرض الأساسي الشامل";
+            presentation.Description = "العرض التقديمي الأساسي الشامل لشركة SmartDevCo ومنظومة ROOTACA للمدارس الذكية والأكاديمية، يتم استنساخه وتخصيصه لكل مدرسة.";
+        }
+
+        // If template slides count is not 12, replace with the complete 12 master slides
+        if (presentation.Slides.Count != 12)
+        {
+            if (presentation.Slides.Any())
             {
-                PresentationId = presentation.Id,
-                Category = SlideCategory.CompanyOverview,
-                SlideTitleAr = "تحديات الإدارة المدرسية التقليدية",
-                SlideTitleEn = "Challenges in Legacy School Operations",
-                ContentAr = "معظم المدارس تعاني من تشتت البيانات بين ملفات إكسل وبرامج قديمة غير مترابطة، وصعوبة التواصل مع أولياء الأمور وتأخر تحصيل المصروفات.",
-                ContentEn = "Most schools suffer from siloed records in Excel sheets, disconnected desktop software, cumbersome parent communication, and delayed tuition collections.",
-                KeyPointsArJson = "[\"أخطاء متكررة في رصد الدرجات والغياب\", \"غياب لوحات المؤشرات الفورية للإدارة\", \"ضعف التواصل الآني مع أولياء الأمور\"]",
-                KeyPointsEnJson = "[\"Frequent manual errors in attendance and grading\", \"Lack of real-time executive analytics for principals\", \"Friction in parent engagement and updates\"]",
-                DisplayOrder = 2,
-                IsEnabled = true
-            },
-            new()
-            {
-                PresentationId = presentation.Id,
-                Category = SlideCategory.SmartSchool,
-                SlideTitleAr = "منظومة ROOTACA Smart School",
-                SlideTitleEn = "ROOTACA Smart School Platform",
-                ContentAr = "نظام متكامل لإدارة المدارس يغطي كل تفاصيل الدورة التعليمية والإدارية والمالية في منصة موحدة فائقة السهولة.",
-                ContentEn = "An all-in-one unified school management system seamlessly integrating student records, academics, timetable, finance, and parent portals.",
-                KeyPointsArJson = "[\"شؤون الطلاب والقبول والتسجيل\", \"الجداول المدرسية وتوزيع الحصص\", \"الشهادات والتقارير الأكاديمية المطابقة للمناهج\", \"إدارة الأقساط والمصروفات المدرسية\"]",
-                KeyPointsEnJson = "[\"Student admissions and enrollment\", \"Automated timetabling & schedule management\", \"Curriculum-aligned grading and report cards\", \"Tuition fees, billing, and installment tracking\"]",
-                DisplayOrder = 3,
-                IsEnabled = true
-            },
-            new()
-            {
-                PresentationId = presentation.Id,
-                Category = SlideCategory.SmartSchool,
-                SlideTitleAr = "تطبيق ولي الأمر والمعلم الذكي",
-                SlideTitleEn = "Parent & Teacher Mobile Experience",
-                ContentAr = "تطبيقات هواتف ذكية تتيح لولي الأمر متابعة الحضور والواجبات والملاحظات والدرجات فوريًا واستلام الإشعارات المدرسية.",
-                ContentEn = "Dedicated mobile apps empowering parents to monitor attendance, assignments, behavioral notes, and grades in real time with push notifications.",
-                KeyPointsArJson = "[\"إشعارات فورية بالحضور والغياب\", \"سداد المصروفات إلكترونياً بأمان\", \"تواصل مباشر ومقنن مع إدارة المدرسة والمدرسين\"]",
-                KeyPointsEnJson = "[\"Instant attendance and bus tracking alerts\", \"Secure digital payment integration\", \"Compliant, direct communication channels\"]",
-                DisplayOrder = 4,
-                IsEnabled = true
-            },
-            new()
-            {
-                PresentationId = presentation.Id,
-                Category = SlideCategory.Academy,
-                SlideTitleAr = "منظومة ROOTACA Academy للمراكز التدريبية",
-                SlideTitleEn = "ROOTACA Academy for Training Centers",
-                ContentAr = "حل مخصص للأكاديميات ومراكز اللغات والتدريب، يدير الدورات التدريبية والقاعات، المدربين، وإصدار الشهادات المعتمدة.",
-                ContentEn = "Engineered specifically for training institutes, test prep centers, and academies managing courses, instructors, cohorts, and certification.",
-                KeyPointsArJson = "[\"إدارة الدورات التدريبية والمجموعات (Cohorts)\", \"حجز القاعات وجداول المدربين\", \"إصدار شهادات إلكترونية بباركود التحقق (QR Code)\", \"متابعة الاشتراكات وسداد الرسوم\"]",
-                KeyPointsEnJson = "[\"Course and cohort lifecycle management\", \"Room scheduling & instructor allocation\", \"Automated QR-verified certificate issuance\", \"Registration fee management and CRM\"]",
-                DisplayOrder = 5,
-                IsEnabled = true
-            },
-            new()
-            {
-                PresentationId = presentation.Id,
-                Category = SlideCategory.ValueProposition,
-                SlideTitleAr = "الأمان، السحابة، والامتثال للوائح",
-                SlideTitleEn = "Security, Cloud Reliability & Compliance",
-                ContentAr = "تعتمد حلولنا أعلى معايير الحماية والتشفير والنسخ الاحتياطي، مع الامتثال الكامل لقوانين حماية البيانات والجهات التعليمية الرسمية.",
-                ContentEn = "Built with end-to-end encryption, automated backups, and 99.9% uptime SLAs in strict compliance with education governance regulations.",
-                KeyPointsArJson = "[\"تشفير كامل للبيانات (At-Rest & In-Transit)\", \"صلاحيات دقيقة لكل مستخدم ودور وظيفي\", \"نسخ احتياطي يومي واستعادة فورية عند الطوارئ\"]",
-                KeyPointsEnJson = "[\"Enterprise-grade encryption (TLS & AES-256)\", \"Granular role-based access control\", \"Automated multi-region backups and disaster recovery\"]",
-                DisplayOrder = 6,
-                IsEnabled = true
-            },
-            new()
-            {
-                PresentationId = presentation.Id,
-                Category = SlideCategory.ValueProposition,
-                SlideTitleAr = "خطة التحول الرقمي والتدريب",
-                SlideTitleEn = "Implementation & Onboarding Roadmap",
-                ContentAr = "نرافقك خطوة بخطوة: من استيراد البيانات التاريخية وتدريب الفريق، إلى الإطلاق الناجح وتقديم دعم فني مستمر على مدار الساعة.",
-                ContentEn = "A proven phased rollout: seamless data migration, hands-on staff training workshops, go-live supervision, and dedicated 24/7 technical support.",
-                KeyPointsArJson = "[\"نقل آمن لبيانات الطلاب السابقة بدون انقطاع\", \"ورش عمل تدريبية تفاعلية للموظفين والمعلمين\", \"مدير حساب مخصص لمتابعة احتياجات مدرستكم\"]",
-                KeyPointsEnJson = "[\"Zero-loss historical data import\", \"Interactive training workshops for admin and teaching staff\", \"Dedicated account manager and SLA-backed support\"]",
-                DisplayOrder = 7,
-                IsEnabled = true
-            },
-            new()
-            {
-                PresentationId = presentation.Id,
-                Category = SlideCategory.Closing,
-                SlideTitleAr = "الخطوة التالية — موعد العرض التجريبي (Demo)",
-                SlideTitleEn = "Next Steps — Schedule Your Custom Demo",
-                ContentAr = "يسعدنا تنظيم جلسة عرض حي (Live Interactive Demo) مخصصة لمجلس إدارة المدرسة لعرض المنظومة بالإعدادات المناسبة لطبيعة مدرستكم.",
-                ContentEn = "We would love to schedule a live, personalized demonstration tailored to your school's unique academic structure and operational requirements.",
-                KeyPointsArJson = "[\"عرض تفاعلي مباشر للمنظومة والتطبيقات\", \"تقديم دراسة جدوى وعرض مالي مخصص\", \"الإجابة على كافة الاستفسارات الفنية والإدارية\"]",
-                KeyPointsEnJson = "[\"Live hands-on system and mobile app walk-through\", \"Tailored feasibility proposal and quote\", \"Q&A with our education solutions architects\"]",
-                DisplayOrder = 8,
-                IsEnabled = true
+                _db.PresentationSlides.RemoveRange(presentation.Slides);
+                await _db.SaveChangesAsync();
             }
-        };
 
-        _db.PresentationSlides.AddRange(slides);
-        await _db.SaveChangesAsync();
+            var slides = new List<PresentationSlide>
+            {
+                // Slide 01: Welcome to [School Name]
+                new()
+                {
+                    PresentationId = presentation.Id,
+                    Category = SlideCategory.CompanyOverview,
+                    SlideTitleAr = "01 — مرحبًا بكم في [School Name]",
+                    SlideTitleEn = "01 — Welcome to [School Name]",
+                    ContentAr = "مدرستكم أولًا — نبذة تعريفية ورؤية ورسالة وترحيب مخصص بمدرستكم الكريمة.",
+                    ContentEn = "Your School First — Dedicated introduction, campus overview, vision & mission.",
+                    KeyPointsArJson = "[\"اسم المدرسة وشعارها وصورة للمبنى\", \"نبذة تعريفية عن المدرسة ورؤيتها ورسالتها ومراحلها التعليمية\", \"رسالة ترحيبية مخصصة باسم المدرسة\"]",
+                    KeyPointsEnJson = "[\"Official school branding, crest & campus imagery\", \"Comprehensive academic overview, vision & mission\", \"Personalized welcome message for school leadership\"]",
+                    ImageUrl = "https://images.openai.com/static-rsc-4/zdIDzNsblg48nKskjWY0_bFTW8ewWu95dun81z_7NT6IEXSyKdPkQwLFr1fDaVm1eCEdpE4SVwcPU-C2-FtkqFYaZmH6fTt-XjoeQWpKDxjFfxnHfEmNL3PokOXyfKB-ei8YndVmfmykjvvJylNzRnuYZX4ekdj3T640nzNujM0?purpose=inline",
+                    DisplayOrder = 1,
+                    IsEnabled = true
+                },
+                // Slide 02: Why We Chose Your School
+                new()
+                {
+                    PresentationId = presentation.Id,
+                    Category = SlideCategory.CompanyOverview,
+                    SlideTitleAr = "02 — لماذا اخترنا مدرستكم؟",
+                    SlideTitleEn = "02 — Why We Chose Your School",
+                    ContentAr = "تقدير مكانة المدرسة واهتمامها بالتطوير والريادة التعليمية والتكنولوجية.",
+                    ContentEn = "Appreciating your school's educational standing and commitment to innovation.",
+                    KeyPointsArJson = "[\"ما الذي لفت انتباهنا في المدرسة وتميزها؟\", \"فرصة حقيقية للتعاون الاستراتيجي المشترك\", \"كيف يمكن للتكنولوجيا أن تدعم رؤية مدرستكم؟\"]",
+                    KeyPointsEnJson = "[\"Distinct qualities and achievements that stood out\", \"A genuine opportunity for strategic collaboration\", \"How modern technology empowers your school vision\"]",
+                    ImageUrl = "https://images.openai.com/static-rsc-4/dPg-qhYNO7PpNud9v0fcw3b1EX-szY5YEzDwuADzjPqMFkfReeKSRdOBLvh997D51cqGUfVFbTTE7xIBa1ASJjc1G-CCrZnLhKEzTgymaQYH2YXDGJcYNDRGvGHUWfWDaAT9D6N5uzKmXB4ZZ4f7XEmHiIdjngOxPI2qJ6RKktY?purpose=inline",
+                    DisplayOrder = 2,
+                    IsEnabled = true
+                },
+                // Slide 03: About SmartDevCo
+                new()
+                {
+                    PresentationId = presentation.Id,
+                    Category = SlideCategory.CompanyOverview,
+                    SlideTitleAr = "03 — من نحن؟ شركة SmartDevCo",
+                    SlideTitleEn = "03 — About SmartDevCo",
+                    ContentAr = "شركة متخصصة في الحلول الرقمية، تطوير الأنظمة والتطبيقات السحابية وحلول SaaS والتحول الرقمي.",
+                    ContentEn = "Specialized digital engineering firm delivering enterprise SaaS, cloud systems, and digital transformation.",
+                    KeyPointsArJson = "[\"تطوير الأنظمة والتطبيقات السحابية الحديثة\", \"حلول SaaS المتكاملة للتحول الرقمي للتعليم\", \"خبرتنا في بناء حلول مترابطة وقابلة للتوسع\"]",
+                    KeyPointsEnJson = "[\"Cloud-native systems and specialized mobile app development\", \"Comprehensive SaaS platforms for educational transformation\", \"Deep expertise in interconnected, highly scalable architectures\"]",
+                    ImageUrl = "https://images.openai.com/static-rsc-4/5PZD-ABLe7DXcpbKcZboKvivy0RHRkPHtlGbFT7nu_Jie2hjV1eh7yOcdvoxMZF4j_GCpfuYZptWZvAwvfMqaRuBg2THaoE8VCfP_FqZZljXvBT33Hwi5kC01TaGVQEFHrKFAhnG68RmdZ1QnPy-nru8-eTl-xOdsbh5cTXBKu0?purpose=inline",
+                    DisplayOrder = 3,
+                    IsEnabled = true
+                },
+                // Slide 04: Introducing ROOTACA SMS
+                new()
+                {
+                    PresentationId = presentation.Id,
+                    Category = SlideCategory.SmartSchool,
+                    SlideTitleAr = "04 — نقدم لكم ROOTACA Smart School",
+                    SlideTitleEn = "04 — Introducing ROOTACA SMS",
+                    ContentAr = "نظام متكامل لإدارة العمليات المدرسية والتواصل الأكاديمي والإداري الشامل.",
+                    ContentEn = "An all-in-one unified school management system for operations, academics, and communication.",
+                    KeyPointsArJson = "[\"تطبيقات تفاعلية للطلاب وأولياء الأمور\", \"تطبيقات للمعلمين والمشرفين الأكاديميين\", \"لوحة قيادة وتحكم لإدارة المدرسة والعمليات\"]",
+                    KeyPointsEnJson = "[\"Interactive mobile apps for students and parents\", \"Dedicated workflow apps for teachers and supervisors\", \"Central executive dashboard for live school operations\"]",
+                    ImageUrl = "https://images.openai.com/static-rsc-4/0J5dGgUpa5AyEy-dMF1oPnj1cqpvQ-EXHG3nXf8DuEdn5ktKPYhbKjlU9475_jDcV5u0QhNycbR5LNPa5OQYfqkWPTtp19GuaEKmesW2OG1Gvyoon-oxEiK_KmJ0SIMorgBfDTj0wxl_UJBDeyOYFD0koU1VuCPITPX5pfrd8pM?purpose=inline",
+                    DisplayOrder = 4,
+                    IsEnabled = true
+                },
+                // Slide 05: One Connected School Community
+                new()
+                {
+                    PresentationId = presentation.Id,
+                    Category = SlideCategory.SmartSchool,
+                    SlideTitleAr = "05 — مدرسة واحدة.. تواصل أفضل",
+                    SlideTitleEn = "05 — One Connected School Community",
+                    ContentAr = "مجتمع مدرسي متصل: ولي الأمر يتابع ابنه، الطالب يصل لخدماته، المعلم يدير مهامه، والإدارة برؤية شاملة.",
+                    ContentEn = "A unified platform connecting parents, students, teachers, supervisors, and executive leadership.",
+                    KeyPointsArJson = "[\"ولي الأمر يتابع ابنه لحظة بلحظة والطالب يصل لخدماته\", \"المعلم والمشرف يديران الحصص والتقييم بسلاسة\", \"الإدارة تحصل على رؤية أوضح للعمليات وتقارير فورية\"]",
+                    KeyPointsEnJson = "[\"Parents monitor live progress, students access digital learning\", \"Teachers & supervisors conduct grading and attendance effortlessly\", \"School leadership gains 360-degree real-time operational clarity\"]",
+                    ImageUrl = "https://images.openai.com/static-rsc-4/0J5dGgUpa5AyEy-dMF1oPnj1cqpvQ-EXHG3nXf8DuEdn5ktKPYhbKjlU9475_jDcV5u0QhNycbR5LNPa5OQYfqkWPTtp19GuaEKmesW2OG1Gvyoon-oxEiK_KmJ0SIMorgBfDTj0wxl_UJBDeyOYFD0koU1VuCPITPX5pfrd8pM?purpose=inline",
+                    DisplayOrder = 5,
+                    IsEnabled = true
+                },
+                // Slide 06: ROOTACA Academy
+                new()
+                {
+                    PresentationId = presentation.Id,
+                    Category = SlideCategory.Academy,
+                    SlideTitleAr = "06 — أكاديمية روتاكا ROOTACA Academy",
+                    SlideTitleEn = "06 — ROOTACA Academy",
+                    ContentAr = "تعليم البرمجة والتكنولوجيا وتنمية مهارات التفكير المنطقي وحل المشكلات لطلاب المدرسة.",
+                    ContentEn = "Teaching coding, technology, and analytical problem-solving for school students.",
+                    KeyPointsArJson = "[\"تعليم البرمجة والذكاء الاصطناعي وتكنولوجيا المستقبل\", \"تنمية مهارات التفكير المنطقي وحل المشكلات العملية\", \"برامج ومعسكرات تدريبية مخصصة لطلاب المدرسة\"]",
+                    KeyPointsEnJson = "[\"Modern curriculum in coding, AI, and emerging technologies\", \"Fostering computational thinking and practical problem solving\", \"Tailored student camps, bootcamps and certification cohorts\"]",
+                    ImageUrl = "https://images.openai.com/static-rsc-4/TywsGedcNPLComAkQPUNDNkW8jU0z44kVRbqMGJzrXbG45v_4P9J2TT18firAO0kP_qMdlY_xb9aEtfzGXSAVZnazA3YJuq4MI9V7GnAhC0uP9vZtsjURCPScXXSTQfTQrYlkMi4D1WIgQcNb9Hlbok_UpDRgTTaIYdWV8MVF1c?purpose=inline",
+                    DisplayOrder = 6,
+                    IsEnabled = true
+                },
+                // Slide 07: Technology & Security
+                new()
+                {
+                    PresentationId = presentation.Id,
+                    Category = SlideCategory.ValueProposition,
+                    SlideTitleAr = "07 — أمان من البداية.. وبنية سحابية جاهزة للتوسع",
+                    SlideTitleEn = "07 — Secure by Design. Built for the Cloud.",
+                    ContentAr = "Your School's Data. Your School's Environment. بيانات مدرستكم في بيئة تشغيل مستقلة.",
+                    ContentEn = "Your School's Data. Your School's Environment. Dedicated isolated tenant architecture.",
+                    KeyPointsArJson = "[\"بنية سحابية تتيح الوصول للنظام من أي مكان مع حماية فائقة\", \"تحكم دقيق في الصلاحيات (Role-Based Access Control)\", \"قاعدة بيانات وبيئة تشغيل مستقلة لكل مدرسة ومراقبة مستمرة\"]",
+                    KeyPointsEnJson = "[\"Cloud infrastructure accessible everywhere with zero downtime\", \"Fine-grained role-based access permissions for staff\", \"Dedicated database tenant isolation and 24/7 reliability monitoring\"]",
+                    ImageUrl = "https://images.openai.com/static-rsc-4/7UlmiSHdaQgDZD8fdVMRkCuN3CjeU0TcblPvCxGrOmlrNgq1MNNgO0kb64p68n-UaVgOrThlUviTl7mX8_toPyzmkDhe6v_Ql2WwUJfmyCIMq2xEobe2JGOr1IkSgdjCJHt-jamQ8I7JDMza_GLM3NNRd8hyANMFgqdVoUqHXiM?purpose=inline",
+                    DisplayOrder = 7,
+                    IsEnabled = true
+                },
+                // Slide 08: Challenges We Solve
+                new()
+                {
+                    PresentationId = presentation.Id,
+                    Category = SlideCategory.ValueProposition,
+                    SlideTitleAr = "08 — إيه المشكلات اللي هنحلها؟",
+                    SlideTitleEn = "08 — Challenges We Solve",
+                    ContentAr = "نربط كل تحدٍ إداري وتشغيلي بحل فعلي وملموس داخل النظام.",
+                    ContentEn = "Connecting every school administrative pain point to a concrete automated solution.",
+                    KeyPointsArJson = "[\"القضاء على تشتت البيانات بين الأنظمة والإكسل والملفات\", \"تسهيل التواصل اللحظي مع أولياء الأمور وحل شكاوى التأخير\", \"أتمتة الإجراءات الإدارية اليدوية وتوفير تقارير فورية دقيقة\"]",
+                    KeyPointsEnJson = "[\"Eliminating scattered data across Excel sheets and paper files\", \"Overcoming parent communication friction and attendance tracking\", \"Automating manual workflows with instant executive analytics\"]",
+                    ImageUrl = "https://images.openai.com/static-rsc-4/ab34Yop7EJs2B4RTctRE-UWvR-JSQD6A_o7kB-l3sSuMkihIUtwogUBehat5mcMkz4tbcHWG2RvkeZUWqksSBMI9fmwnZbEMIXOxDVu92DbE6AN_XZFBjOaBLaWl6m3SE_ZlbRby9oWPDOjlsjQDFVU6hF_DcU0PFXcc8OWP6e8?purpose=inline",
+                    DisplayOrder = 8,
+                    IsEnabled = true
+                },
+                // Slide 09: What We Bring to Your School
+                new()
+                {
+                    PresentationId = presentation.Id,
+                    Category = SlideCategory.ValueProposition,
+                    SlideTitleAr = "09 — إيه اللي هنقدمه لمدرستكم؟",
+                    SlideTitleEn = "09 — What We Bring to Your School",
+                    ContentAr = "تعاون مستمر وشراكة استراتيجية ممتدة وليس مجرد بيع برنامج جاهز.",
+                    ContentEn = "An enduring strategic partnership and ongoing enablement, not just a software license.",
+                    KeyPointsArJson = "[\"نظام رقمي مناسب مخصص للهوية البصرية لمدرستكم\", \"إعداد وتشغيل كامل ونقل البيانات وتدريب الكوادر المدرسية\", \"دعم فني مستمر وإمكانية إضافة وتطوير خصائص مستقبلية\"]",
+                    KeyPointsEnJson = "[\"Tailored digital platform customized to your school visual identity\", \"Full onboarding, turnkey migration & staff training workshops\", \"Ongoing technical support and custom roadmap feature evolution\"]",
+                    ImageUrl = "https://images.openai.com/static-rsc-4/bZY2cn8Pzra9Wm_Syxrbkwd0LWjJefABwCdEBmJorkZjt8E08qesjSWgWG-HBNUO6MG3TEwXQNaLq9Qh-YlNrZ8UcJM-wtarYLuYYvj3ON1ZDwwM2IZGJQoisVUsrNLswAiK9Qs-CQQVfizQDnAjDL-vny8NOWYRpxqAABT0ZAs?purpose=inline",
+                    DisplayOrder = 9,
+                    IsEnabled = true
+                },
+                // Slide 10: The Value of Partnership
+                new()
+                {
+                    PresentationId = presentation.Id,
+                    Category = SlideCategory.ValueProposition,
+                    SlideTitleAr = "10 — إيه المكسب اللي هتحققه المدرسة من الشراكة؟",
+                    SlideTitleEn = "10 — The Value of Partnership",
+                    ContentAr = "تحسين تجربة ولي الأمر، تقليل الوقت والمجهود الإداري، ودعم صورة المدرسة التنافسية.",
+                    ContentEn = "Elevating parent & student satisfaction, cutting admin overhead, and boosting competitiveness.",
+                    KeyPointsArJson = "[\"تحسين تجربة ولي الأمر والطالب ورفع كفاءة التواصل\", \"تقليل الوقت والمجهود الإداري والتكلفة التشغيلية\", \"دعم صورة المدرسة الرقمية وتنمية مهارات الطلاب بالأكاديمية\"]",
+                    KeyPointsEnJson = "[\"Superior parent-student engagement and instant response\", \"Drastic reduction in routine manual effort and overhead costs\", \"Strengthening school digital prestige with student academy training\"]",
+                    ImageUrl = "https://images.openai.com/static-rsc-4/iBKCCvMSUO9PWSpcRIDnoYAQUUfNy2r9O3F5AhbZUXoBayGYj2zrWk2aEB82SWJXEyBIhf6NXhVux_hvl_5jDnRLCLYEd3EREvPlNLHjOhIARXpX8cWQoVi2CQUZOKvI5SK-vzyQhH4AS5DlayndzkKb2wZnn5Btv-eQ_zG9LO4GoHzDuRd5VIerfKnclTFZ?purpose=inline",
+                    DisplayOrder = 10,
+                    IsEnabled = true
+                },
+                // Slide 11: Your School's Digital Growth Roadmap
+                new()
+                {
+                    PresentationId = presentation.Id,
+                    Category = SlideCategory.ValueProposition,
+                    SlideTitleAr = "11 — خارطة طريق التحول والنمو الرقمي لمدرستكم",
+                    SlideTitleEn = "11 — Your School's Digital Growth Roadmap",
+                    ContentAr = "مراحل واضحة ومدروسة للتعاون لضمان انطلاق سلس وناجح لمنظومة مدرستكم.",
+                    ContentEn = "Five structured collaboration phases ensuring smooth launch and sustainable growth.",
+                    KeyPointsArJson = "[\"فهم احتياجات المدرسة وتحديد الحلول المناسبة\", \"التخصيص والتجهيز ونقل البيانات التاريخية\", \"التشغيل والتدريب العملي والدعم والتطوير المستمر\"]",
+                    KeyPointsEnJson = "[\"Discovery session & tailoring features to school requirements\", \"Customization, brand styling & seamless historical data import\", \"Go-live supervision, staff training & continuous support\"]",
+                    ImageUrl = "https://images.openai.com/static-rsc-4/5PZD-ABLe7DXcpbKcZboKvivy0RHRkPHtlGbFT7nu_Jie2hjV1eh7yOcdvoxMZF4j_GCpfuYZptWZvAwvfMqaRuBg2THaoE8VCfP_FqZZljXvBT33Hwi5kC01TaGVQEFHrKFAhnG68RmdZ1QnPy-nru8-eTl-xOdsbh5cTXBKu0?purpose=inline",
+                    DisplayOrder = 11,
+                    IsEnabled = true
+                },
+                // Slide 12: Thank You, [School Name]
+                new()
+                {
+                    PresentationId = presentation.Id,
+                    Category = SlideCategory.Closing,
+                    SlideTitleAr = "12 — شكرًا لمدرستكم [School Name]",
+                    SlideTitleEn = "12 — Thank You, [School Name]",
+                    ContentAr = "Let's Build a Smarter School Together — شكر خاص لإدارة المدرسة على وقتها واهتمامها، ونتطلع لفرصة التعاون.",
+                    ContentEn = "Let's Build a Smarter School Together — Sincere gratitude to school leadership; looking forward to partnering.",
+                    KeyPointsArJson = "[\"شكر خاص لإدارة المدرسة على وقتها واهتمامها بالابتكار\", \"تحديد موعد جلسة العرض التجريبي المباشر (Demo Session)\", \"بيانات التواصل وقنوات التنسيق المشترك والخطوات التالية\"]",
+                    KeyPointsEnJson = "[\"Special appreciation to school leadership for their time and vision\", \"Schedule live interactive demo session tailored to your school\", \"Direct contact info, QR Code, and next collaboration steps\"]",
+                    ImageUrl = "https://images.openai.com/static-rsc-4/ssCrEsti-ICEippNp6uki73r5hsDJbsq25hIGGNaFMelDoV2wsFaUwsFeBYFEPbL9gA_IDINz7493P2CN_Az9xgi4z1lv_gulem6MZyZaXGrw7DIxJZTOXu8rEiH3OkESKB0-3PtkY7Bc3k3IDGmMeoeRd-jAxLXlu32TIPrSDE?purpose=inline",
+                    DisplayOrder = 12,
+                    IsEnabled = true
+                }
+            };
+
+            _db.PresentationSlides.AddRange(slides);
+            await _db.SaveChangesAsync();
+        }
     }
 
     private async Task UpdateBrandingAsync()
@@ -556,6 +653,29 @@ public partial class DbSeeder
             s.SlideTitleEn = s.SlideTitleEn.Replace("SmartDevCo", "Rootaca");
             s.ContentAr = s.ContentAr.Replace("سمارت ديف كو", "روتاكا").Replace("سمارت ديف", "روتاكا").Replace("SmartDevCo", "Rootaca");
             s.ContentEn = s.ContentEn.Replace("SmartDevCo", "Rootaca");
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task UpdateSlide5FourCardsAsync()
+    {
+        var slide5List = await _db.PresentationSlides
+            .Where(s => s.DisplayOrder == 5 || s.SlideTitleAr.Contains("مدرسة واحدة") || s.SlideTitleEn.Contains("One Connected") || s.SlideTitleEn.Contains("Connected Experience"))
+            .ToListAsync();
+
+        string fourCardsJson = "[{\"url\":\"/slides/connected-parent.png\",\"title\":\"Parent\",\"subtitle\":\"تجربة ولي الأمر\"},{\"url\":\"/slides/connected-student.png\",\"title\":\"Student\",\"subtitle\":\"تجربة الطالب\"},{\"url\":\"/slides/connected-supervisor.png\",\"title\":\"Supervisor\",\"subtitle\":\"أدوات المشرف\"},{\"url\":\"/slides/connected-teacher.png\",\"title\":\"Teacher\",\"subtitle\":\"بيئة عمل المعلم\"}]";
+
+        foreach (var s in slide5List)
+        {
+            if (string.IsNullOrWhiteSpace(s.ImageUrl) || s.ImageUrl.Contains("images.openai.com") || !s.ImageUrl.StartsWith("["))
+            {
+                s.ImageUrl = fourCardsJson;
+                s.SlideTitleAr = "05 — مدرسة واحدة.. تجربة رقمية مترابطة";
+                s.SlideTitleEn = "05 — .One School. One Connected Experience";
+                s.ContentAr = "مدرسة واحدة.. تجربة رقمية مترابطة لولي الأمر والطالب والمشرف والمعلم.";
+                s.ContentEn = ".One School. One Connected Experience for Parents, Students, Supervisors and Teachers.";
+            }
         }
 
         await _db.SaveChangesAsync();

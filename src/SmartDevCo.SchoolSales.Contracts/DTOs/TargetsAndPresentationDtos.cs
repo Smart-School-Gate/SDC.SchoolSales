@@ -68,9 +68,112 @@ public class PresentationDto
     public ProductInterest SelectedProducts { get; set; }
     public int VersionNumber { get; set; }
     public int SlidesCount { get; set; }
+    public bool IsPublished { get; set; }
+    public DateTime? PublishedAtUtc { get; set; }
+    public int? PublishedVersionNumber { get; set; }
+    public string? ShareToken { get; set; }
+    public DateTime? ShareTokenExpiresAtUtc { get; set; }
     public List<PresentationSlideDto> Slides { get; set; } = new();
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
+}
+
+public class PublicPresentationDto
+{
+    public string ShareToken { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? SchoolName { get; set; }
+    public ProductInterest SelectedProducts { get; set; }
+    public int VersionNumber { get; set; }
+    public DateTime PublishedAtUtc { get; set; }
+    public DateTime? ExpiresAtUtc { get; set; }
+    public List<PublicSlideDto> Slides { get; set; } = new();
+}
+
+public class PublicSlideDto
+{
+    public Guid Id { get; set; }
+    public string SlideTitleAr { get; set; } = string.Empty;
+    public string SlideTitleEn { get; set; } = string.Empty;
+    public string ContentAr { get; set; } = string.Empty;
+    public string ContentEn { get; set; } = string.Empty;
+    public string? KeyPointsArJson { get; set; }
+    public string? KeyPointsEnJson { get; set; }
+    public string? ImageUrl { get; set; }
+    public SlideCategory Category { get; set; }
+    public int DisplayOrder { get; set; }
+}
+
+public class PublishPresentationRequest
+{
+    public DateTime? ExpiresAtUtc { get; set; }
+    public bool RegenerateToken { get; set; }
+}
+
+public class PublishResultDto
+{
+    public Guid PresentationId { get; set; }
+    public string ShareToken { get; set; } = string.Empty;
+    public string PublicUrl { get; set; } = string.Empty;
+    public bool IsPublished { get; set; }
+    public DateTime? PublishedAtUtc { get; set; }
+    public int? PublishedVersionNumber { get; set; }
+    public DateTime? ExpiresAtUtc { get; set; }
+}
+
+public class RecordViewEventRequest
+{
+    public string SessionId { get; set; } = string.Empty;
+    public int? SlideIndex { get; set; }
+    public int DurationSeconds { get; set; }
+    public bool IsDemoCtaClick { get; set; }
+    public string? Language { get; set; }
+    public string? ReferrerDomain { get; set; }
+}
+
+public class SlideAnalyticsDto
+{
+    public int SlideIndex { get; set; }
+    public string SlideTitleAr { get; set; } = string.Empty;
+    public string SlideTitleEn { get; set; } = string.Empty;
+    public int ViewCount { get; set; }
+    public int TotalDurationSeconds { get; set; }
+    public double AverageDurationSeconds { get; set; }
+}
+
+public class PresentationAnalyticsSummaryDto
+{
+    public Guid PresentationId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? ShareToken { get; set; }
+    public bool IsPublished { get; set; }
+    public int TotalViews { get; set; }
+    public int UniqueSessions { get; set; }
+    public int DemoCtaClicks { get; set; }
+    public int TotalEngagementDurationSeconds { get; set; }
+    public double AverageDurationPerSessionSeconds { get; set; }
+    public DateTime? LastViewedAtUtc { get; set; }
+    public List<SlideAnalyticsDto> SlideStats { get; set; } = new();
+}
+
+public class PublicLeadInquiryRequest
+{
+    public string SchoolName { get; set; } = string.Empty;
+    public string ContactName { get; set; } = string.Empty;
+    public string ContactPhone { get; set; } = string.Empty;
+    public string? ContactEmail { get; set; }
+    public string? JobTitle { get; set; }
+    public string? Message { get; set; }
+    public ProductInterest InterestedProduct { get; set; } = ProductInterest.Both;
+    public string? Honeypot { get; set; }
+}
+
+public class PublicLeadInquiryResultDto
+{
+    public bool Success { get; set; }
+    public string MessageAr { get; set; } = string.Empty;
+    public string MessageEn { get; set; } = string.Empty;
 }
 
 public class PresentationSlideDto
@@ -97,6 +200,13 @@ public class CreatePresentationRequest
     public string? Description { get; set; }
     public bool IsTemplate { get; set; }
     public ProductInterest SelectedProducts { get; set; } = ProductInterest.Both;
+}
+
+public class DuplicatePresentationRequest
+{
+    public string? NewTitle { get; set; }
+    public Guid? TargetSchoolId { get; set; }
+    public bool? IsTemplate { get; set; }
 }
 
 public class CreateSlideRequest

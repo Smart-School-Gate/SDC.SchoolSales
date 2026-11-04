@@ -16,8 +16,52 @@ public class Presentation : BaseEntity
     public Guid CreatedByUserId { get; set; }
     public User CreatedByUser { get; set; } = null!;
 
+    public bool IsPublished { get; set; }
+    public DateTime? PublishedAtUtc { get; set; }
+    public int? PublishedVersionNumber { get; set; }
+    public string? PublishedSnapshotJson { get; set; }
+    public string? ShareToken { get; set; }
+    public DateTime? ShareTokenExpiresAtUtc { get; set; }
+
     public ICollection<PresentationSlide> Slides { get; set; } = new List<PresentationSlide>();
     public ICollection<PresentationVersion> Versions { get; set; } = new List<PresentationVersion>();
+    public ICollection<PresentationViewEvent> ViewEvents { get; set; } = new List<PresentationViewEvent>();
+    public ICollection<PresentationPublicInquiry> PublicInquiries { get; set; } = new List<PresentationPublicInquiry>();
+}
+
+public class PresentationViewEvent : BaseEntity
+{
+    public Guid PresentationId { get; set; }
+    public Presentation Presentation { get; set; } = null!;
+
+    public string ShareToken { get; set; } = string.Empty;
+    public string SessionId { get; set; } = string.Empty;
+    public int? SlideIndex { get; set; }
+    public int DurationSeconds { get; set; }
+    public bool IsDemoCtaClick { get; set; }
+    public string? Language { get; set; }
+    public string? ReferrerDomain { get; set; }
+}
+
+public class PresentationPublicInquiry : BaseEntity
+{
+    public Guid PresentationId { get; set; }
+    public Presentation Presentation { get; set; } = null!;
+
+    public Guid? SchoolId { get; set; }
+    public School? School { get; set; }
+
+    public string ShareToken { get; set; } = string.Empty;
+    public string SchoolName { get; set; } = string.Empty;
+    public string ContactName { get; set; } = string.Empty;
+    public string ContactPhone { get; set; } = string.Empty;
+    public string? ContactEmail { get; set; }
+    public string? JobTitle { get; set; }
+    public string? Message { get; set; }
+    public ProductInterest InterestedProduct { get; set; } = ProductInterest.Both;
+    public bool IsReviewed { get; set; } = false;
+    public Guid? ReviewedByUserId { get; set; }
+    public DateTime? ReviewedAtUtc { get; set; }
 }
 
 public class PresentationSlide : BaseEntity

@@ -58,12 +58,18 @@ public class VisitService : IVisitService
 
         if (filter.FromDate.HasValue)
         {
-            query = query.Where(v => v.VisitDate >= filter.FromDate.Value);
+            var fromUtc = filter.FromDate.Value.Kind == DateTimeKind.Utc 
+                ? filter.FromDate.Value 
+                : DateTime.SpecifyKind(filter.FromDate.Value, DateTimeKind.Utc);
+            query = query.Where(v => v.VisitDate >= fromUtc);
         }
 
         if (filter.ToDate.HasValue)
         {
-            query = query.Where(v => v.VisitDate <= filter.ToDate.Value);
+            var toUtc = filter.ToDate.Value.Kind == DateTimeKind.Utc 
+                ? filter.ToDate.Value 
+                : DateTime.SpecifyKind(filter.ToDate.Value, DateTimeKind.Utc);
+            query = query.Where(v => v.VisitDate <= toUtc);
         }
 
         var totalCount = await query.CountAsync();
@@ -155,13 +161,44 @@ public class VisitService : IVisitService
             return ApiResponse<VisitDto>.Fail("School not found.");
         }
 
-        var repId = _currentUser.UserId ?? school.AssignedToUserId ?? school.CreatedByUserId;
+        var repId = _currentUser.UserId;
+        if (!repId.HasValue || repId == Guid.Empty)
+        {
+            repId = (school.AssignedToUserId.HasValue && school.AssignedToUserId != Guid.Empty)
+                ? school.AssignedToUserId
+                : (school.CreatedByUserId != Guid.Empty ? school.CreatedByUserId : null);
+        }
+
+        if (!repId.HasValue || repId == Guid.Empty)
+        {
+            var defaultUser = await _db.Users.OrderBy(u => u.CreatedAtUtc).FirstOrDefaultAsync();
+            if (defaultUser != null)
+            {
+                repId = defaultUser.Id;
+            }
+            else
+            {
+                return ApiResponse<VisitDto>.Fail("No representative user found to associate with this visit.");
+            }
+        }
+
+        var visitDateUtc = request.VisitDate.Kind == DateTimeKind.Utc
+            ? request.VisitDate
+            : DateTime.SpecifyKind(request.VisitDate, DateTimeKind.Utc);
+
+        DateTime? nextFollowUpUtc = null;
+        if (request.NextFollowUpDate.HasValue)
+        {
+            nextFollowUpUtc = request.NextFollowUpDate.Value.Kind == DateTimeKind.Utc
+                ? request.NextFollowUpDate.Value
+                : DateTime.SpecifyKind(request.NextFollowUpDate.Value, DateTimeKind.Utc);
+        }
 
         var visit = new Visit
         {
             SchoolId = school.Id,
-            RepresentativeId = repId,
-            VisitDate = request.VisitDate,
+            RepresentativeId = repId.Value,
+            VisitDate = visitDateUtc,
             ContactPerson = request.ContactPerson.Trim(),
             ContactPosition = request.ContactPosition?.Trim(),
             DecisionMakerReached = request.DecisionMakerReached,
@@ -169,7 +206,7 @@ public class VisitService : IVisitService
             VisitOutcome = request.VisitOutcome,
             Notes = request.Notes?.Trim(),
             NextAction = request.NextAction?.Trim(),
-            NextFollowUpDate = request.NextFollowUpDate
+            NextFollowUpDate = nextFollowUpUtc
         };
 
         // Attach discovery question answers with historical snapshots
@@ -222,13 +259,13 @@ public class VisitService : IVisitService
         school.UpdatedAtUtc = DateTime.UtcNow;
 
         // Auto create follow-up if next follow-up date is provided
-        if (request.NextFollowUpDate.HasValue)
+        if (nextFollowUpUtc.HasValue)
         {
             _db.FollowUps.Add(new FollowUp
             {
                 SchoolId = school.Id,
-                AssignedToUserId = repId,
-                DueDate = request.NextFollowUpDate.Value,
+                AssignedToUserId = repId.Value,
+                DueDate = nextFollowUpUtc.Value,
                 Priority = FollowUpPriority.High,
                 Status = FollowUpStatus.Pending,
                 Title = string.IsNullOrWhiteSpace(request.NextAction) ? $"Follow-up after visit to {school.Name}" : request.NextAction,
@@ -240,11 +277,11 @@ public class VisitService : IVisitService
         _db.Activities.Add(new Activity
         {
             SchoolId = school.Id,
-            UserId = repId,
+            UserId = repId.Value,
             Type = ActivityType.Visit,
             Subject = $"Visit with {request.ContactPerson} ({request.VisitOutcome})",
             Description = request.Notes,
-            CompletedAtUtc = request.VisitDate,
+            CompletedAtUtc = visitDateUtc,
             IsCompleted = true
         });
 
@@ -271,7 +308,19 @@ public class VisitService : IVisitService
             return ApiResponse<VisitDto>.Fail("Visit not found.");
         }
 
-        visit.VisitDate = request.VisitDate;
+        var visitDateUtc = request.VisitDate.Kind == DateTimeKind.Utc
+            ? request.VisitDate
+            : DateTime.SpecifyKind(request.VisitDate, DateTimeKind.Utc);
+
+        DateTime? nextFollowUpUtc = null;
+        if (request.NextFollowUpDate.HasValue)
+        {
+            nextFollowUpUtc = request.NextFollowUpDate.Value.Kind == DateTimeKind.Utc
+                ? request.NextFollowUpDate.Value
+                : DateTime.SpecifyKind(request.NextFollowUpDate.Value, DateTimeKind.Utc);
+        }
+
+        visit.VisitDate = visitDateUtc;
         visit.ContactPerson = request.ContactPerson.Trim();
         visit.ContactPosition = request.ContactPosition?.Trim();
         visit.DecisionMakerReached = request.DecisionMakerReached;
@@ -279,7 +328,7 @@ public class VisitService : IVisitService
         visit.VisitOutcome = request.VisitOutcome;
         visit.Notes = request.Notes?.Trim();
         visit.NextAction = request.NextAction?.Trim();
-        visit.NextFollowUpDate = request.NextFollowUpDate;
+        visit.NextFollowUpDate = nextFollowUpUtc;
         visit.UpdatedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
