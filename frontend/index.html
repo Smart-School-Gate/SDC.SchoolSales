@@ -5,6 +5,22 @@
     <link rel="icon" type="image/png" href="/rootaca-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rootaca | School Sales & Visit Manager</title>
+    <script>
+      // Defensively patch SVGAnimatedString so browser extensions (IDM, Google Translate, etc.)
+      // do not throw "e.target.className.indexOf is not a function" when clicking SVG elements.
+      if (typeof SVGAnimatedString !== 'undefined') {
+        if (!SVGAnimatedString.prototype.indexOf) {
+          SVGAnimatedString.prototype.indexOf = function(str, pos) {
+            return (this.baseVal || '').indexOf(str, pos);
+          };
+        }
+        if (!SVGAnimatedString.prototype.includes) {
+          SVGAnimatedString.prototype.includes = function(str, pos) {
+            return (this.baseVal || '').includes(str, pos);
+          };
+        }
+      }
+    </script>
     <!-- Google Fonts: Cairo & Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

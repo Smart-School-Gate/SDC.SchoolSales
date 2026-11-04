@@ -340,32 +340,33 @@ export const SlideMultiImagesView: React.FC<SlideMultiImagesViewProps> = ({
                     className="flex flex-col justify-between group cursor-zoom-in min-h-0"
                     title="انقر لتكبير الصورة بكامل الحجم"
                   >
-                    {/* Rounded Image Box - Contain fit with background padding so UI screenshots are never cropped */}
-                    <div className="relative rounded-xl sm:rounded-2xl overflow-hidden aspect-[4/3] bg-slate-50/90 border border-slate-200/80 group-hover:border-cyan-400 group-hover:shadow-xs transition-all flex-1 min-h-[105px] sm:min-h-[135px] flex items-center justify-center">
+                    {/* Rounded Image Box with Centered Dark Frosted Overlay Pill Badge */}
+                    <div className="relative rounded-xl sm:rounded-2xl overflow-hidden aspect-[16/10] bg-slate-100 border border-slate-200/80 group-hover:border-cyan-400 group-hover:shadow-xs transition-all flex-1 min-h-[105px] sm:min-h-[135px] flex items-center justify-center">
                       <img
                         src={img.url}
                         alt={img.title || img.caption || `صورة ${idx + 1}`}
-                        className="w-full h-full object-contain p-1 transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           if (target.src !== FALLBACK_IMG) target.src = FALLBACK_IMG;
                         }}
                       />
+                      {/* Dark Vignette Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+
+                      {/* Center Bottom Frosted Pill Overlay Badge (Matching Reference Design 2) */}
+                      <div className="absolute bottom-2 inset-x-1.5 flex justify-center pointer-events-none z-10">
+                        <div className="bg-black/65 backdrop-blur-md text-white text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-white/20 shadow-md truncate max-w-[95%] text-center">
+                          <span>{img.title || img.caption || `صورة ${idx + 1}`}</span>
+                          {img.subtitle && (
+                            <span className="opacity-90 font-normal"> | {img.subtitle}</span>
+                          )}
+                        </div>
+                      </div>
+
                       <div className="absolute top-1.5 end-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-xs text-white p-1 rounded-md text-[10px] shadow-sm">
                         <ZoomIn className="w-3 h-3" />
                       </div>
-                    </div>
-
-                    {/* Text Below the Image (Clean white background, right-aligned) */}
-                    <div className="pt-1 text-right shrink-0" dir="rtl">
-                      <div className="text-[11px] sm:text-xs font-black text-slate-800 leading-tight truncate">
-                        {img.title || img.caption || `صورة ${idx + 1}`}
-                      </div>
-                      {img.subtitle && (
-                        <div className="text-[9px] sm:text-[10px] font-medium text-slate-500 leading-tight truncate mt-0.5">
-                          {img.subtitle}
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}

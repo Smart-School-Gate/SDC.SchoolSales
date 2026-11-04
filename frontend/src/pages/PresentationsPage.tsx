@@ -43,6 +43,14 @@ import {
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { ExecutivePresentationView } from '../components/presentation/ExecutivePresentationView';
+import {
+  parseSlideFooterMetadata,
+  serializeSlideFooterMetadata,
+  TwitterIcon,
+  LinkedinIcon,
+  FacebookIcon,
+  InstagramIcon
+} from '../components/presentation/SlideSocialFooter';
 import { api } from '../services/api';
 import {
   PresentationDto,
@@ -313,7 +321,17 @@ export const PresentationsPage: React.FC = () => {
     images: [{ url: '', caption: '' }] as SlideImageItem[],
     category: 'CompanyOverview' as SlideCategory,
     isEnabled: true,
-    notes: ''
+    notes: '',
+    websiteUrl: '',
+    twitterUrl: '',
+    linkedinUrl: '',
+    facebookUrl: '',
+    instagramUrl: '',
+    customChips: [
+      { titleEn: '', titleAr: '' },
+      { titleEn: '', titleAr: '' },
+      { titleEn: '', titleAr: '' }
+    ]
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -507,7 +525,17 @@ export const PresentationsPage: React.FC = () => {
       images: [{ url: '', caption: '' }],
       category: 'CompanyOverview',
       isEnabled: true,
-      notes: ''
+      notes: '',
+      websiteUrl: 'www.helsinkischool.edu',
+      twitterUrl: 'https://twitter.com',
+      linkedinUrl: 'https://linkedin.com',
+      facebookUrl: 'https://facebook.com',
+      instagramUrl: 'https://instagram.com',
+      customChips: [
+        { titleEn: 'Inspiring Spaces', titleAr: 'مساحات ملهمة' },
+        { titleEn: 'Smart Learning', titleAr: 'تعلم ذكي' },
+        { titleEn: 'Active Lifestyle', titleAr: 'نمط حياة نشط' }
+      ]
     });
     setIsSlideModalOpen(true);
   };
@@ -530,6 +558,7 @@ export const PresentationsPage: React.FC = () => {
     }
 
     const parsedImages = parseSlideImages(slide.imageUrl);
+    const footerMeta = parseSlideFooterMetadata(slide.notes);
 
     setSlideForm({
       slideTitleAr: slide.slideTitleAr,
@@ -541,7 +570,19 @@ export const PresentationsPage: React.FC = () => {
       images: parsedImages.length > 0 ? parsedImages : [{ url: '', caption: '' }],
       category: slide.category,
       isEnabled: slide.isEnabled,
-      notes: slide.notes || ''
+      notes: footerMeta.presenterNotes || '',
+      websiteUrl: footerMeta.websiteUrl || '',
+      twitterUrl: footerMeta.twitterUrl || '',
+      linkedinUrl: footerMeta.linkedinUrl || '',
+      facebookUrl: footerMeta.facebookUrl || '',
+      instagramUrl: footerMeta.instagramUrl || '',
+      customChips: (footerMeta.chips && footerMeta.chips.length > 0)
+        ? footerMeta.chips.map(c => ({ titleEn: c.titleEn || '', titleAr: c.titleAr || '' }))
+        : [
+            { titleEn: 'Inspiring Spaces', titleAr: 'مساحات ملهمة' },
+            { titleEn: 'Smart Learning', titleAr: 'تعلم ذكي' },
+            { titleEn: 'Active Lifestyle', titleAr: 'نمط حياة نشط' }
+          ]
     });
     setIsSlideModalOpen(true);
   };
@@ -554,6 +595,17 @@ export const PresentationsPage: React.FC = () => {
     const pointsArList = slideForm.pointsAr.split('\n').map(s => s.trim()).filter(Boolean);
     const pointsEnList = slideForm.pointsEn.split('\n').map(s => s.trim()).filter(Boolean);
     const serializedImages = serializeSlideImages(slideForm.images);
+
+    const footerMeta = {
+      websiteUrl: slideForm.websiteUrl.trim(),
+      twitterUrl: slideForm.twitterUrl.trim(),
+      linkedinUrl: slideForm.linkedinUrl.trim(),
+      facebookUrl: slideForm.facebookUrl.trim(),
+      instagramUrl: slideForm.instagramUrl.trim(),
+      chips: slideForm.customChips.filter(c => c.titleAr?.trim() || c.titleEn?.trim()),
+      presenterNotes: slideForm.notes.trim()
+    };
+    const serializedNotes = serializeSlideFooterMetadata(footerMeta);
 
     let preservedSlideId = editingSlide?.id;
 
@@ -569,7 +621,8 @@ export const PresentationsPage: React.FC = () => {
         category: slideForm.category,
         displayOrder: editingSlide.displayOrder,
         isEnabled: slideForm.isEnabled,
-        presenterNotesAr: slideForm.notes || undefined
+        notes: serializedNotes,
+        presenterNotesAr: serializedNotes
       });
     } else {
       const addRes = await api.addSlide(selectedPres.id, {
@@ -582,7 +635,8 @@ export const PresentationsPage: React.FC = () => {
         imageUrl: serializedImages || undefined,
         category: slideForm.category,
         isEnabled: slideForm.isEnabled,
-        presenterNotesAr: slideForm.notes || undefined
+        notes: serializedNotes,
+        presenterNotesAr: serializedNotes
       });
       if (addRes?.success && addRes.data?.id) {
         preservedSlideId = addRes.data.id;
@@ -821,19 +875,22 @@ export const PresentationsPage: React.FC = () => {
             </button>
           )}
 
-          {/* Fullscreen Client Presentation Button */}
+          {/* 4 Design Showcase & Fullscreen Launch Buttons */}
           {selectedPres && (
-            <button
-              onClick={() => {
-                const targetIdx = selectedPres.slides.findIndex(s => s.id === selectedSlideId);
-                setCurrentSlideIndex(targetIdx >= 0 ? targetIdx : 0);
-                setIsFullscreen(true);
-              }}
-              className="bg-[#0B1528] hover:bg-slate-900 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-colors flex items-center gap-2 cursor-pointer"
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-              <span>عرض ملء الشاشة للعميل</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => {
+                  const targetIdx = selectedPres.slides.findIndex(s => s.id === selectedSlideId);
+                  setCurrentSlideIndex(targetIdx >= 0 ? targetIdx : 0);
+                  setIsFullscreen(true);
+                }}
+                className="bg-[#0B1528] hover:bg-slate-900 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-colors flex items-center gap-2 cursor-pointer"
+                title="بدء عرض العميل التفاعلي"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-cyan-400" />
+                <span>عرض العميل</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -1449,6 +1506,133 @@ export const PresentationsPage: React.FC = () => {
                 )}
               </div>
 
+              {/* Footer Links & Social Media & 3 Highlight Chips Section */}
+              <div className="space-y-4 p-4 bg-slate-50 border border-slate-200/90 rounded-2xl">
+                <div className="border-b border-slate-200/70 pb-2">
+                  <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                    <Globe className="w-4 h-4 text-cyan-700" />
+                    <span>تذييل الشريحة وروابط التواصل والموقع (Footer & Social Links)</span>
+                  </h4>
+                  <p className="text-[10px] text-slate-500 pt-0.5">
+                    الروابط ديناميكية بالكامل: لن تظهر أيقونة التواصل أو الموقع إلا إذا تم إدخال رابط لها. الحقول الفارغة تُخفى تلقائياً.
+                  </p>
+                </div>
+
+                {/* Website URL */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    رابط الموقع الإلكتروني (Website URL)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="مثال: www.helsinkischool.edu"
+                    value={slideForm.websiteUrl}
+                    onChange={e => setSlideForm({ ...slideForm, websiteUrl: e.target.value })}
+                    className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:border-cyan-500 focus:outline-none font-mono"
+                  />
+                </div>
+
+                {/* Social Links 2x2 Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                      <TwitterIcon className="w-3.5 h-3.5 text-cyan-600" />
+                      <span>رابط Twitter / X</span>
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://twitter.com/..."
+                      value={slideForm.twitterUrl}
+                      onChange={e => setSlideForm({ ...slideForm, twitterUrl: e.target.value })}
+                      className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:border-cyan-500 focus:outline-none font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                      <LinkedinIcon className="w-3.5 h-3.5 text-blue-700" />
+                      <span>رابط LinkedIn</span>
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://linkedin.com/company/..."
+                      value={slideForm.linkedinUrl}
+                      onChange={e => setSlideForm({ ...slideForm, linkedinUrl: e.target.value })}
+                      className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:border-cyan-500 focus:outline-none font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                      <FacebookIcon className="w-3.5 h-3.5 text-blue-600" />
+                      <span>رابط Facebook</span>
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://facebook.com/..."
+                      value={slideForm.facebookUrl}
+                      onChange={e => setSlideForm({ ...slideForm, facebookUrl: e.target.value })}
+                      className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:border-cyan-500 focus:outline-none font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                      <InstagramIcon className="w-3.5 h-3.5 text-pink-600" />
+                      <span>رابط Instagram</span>
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://instagram.com/..."
+                      value={slideForm.instagramUrl}
+                      onChange={e => setSlideForm({ ...slideForm, instagramUrl: e.target.value })}
+                      className="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:border-cyan-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* 3 Custom Feature Chips */}
+                <div className="pt-3 border-t border-slate-200/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-bold text-slate-800">
+                      البطاقات الترويجية الثلاث (3 Highlight Chips)
+                    </label>
+                    <span className="text-[10px] text-slate-400">تظهر أعلى روابط التواصل</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {slideForm.customChips.map((chip, cIdx) => (
+                      <div key={cIdx} className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
+                        <div className="text-[10px] font-black text-cyan-800">
+                          البطاقة {cIdx + 1}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="العنوان (إنجليزي)"
+                          value={chip.titleEn || ''}
+                          onChange={e => {
+                            const updated = [...slideForm.customChips];
+                            updated[cIdx] = { ...updated[cIdx], titleEn: e.target.value };
+                            setSlideForm({ ...slideForm, customChips: updated });
+                          }}
+                          className="w-full text-xs px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:bg-white focus:outline-none focus:border-cyan-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="العنوان (عربي)"
+                          value={chip.titleAr || ''}
+                          onChange={e => {
+                            const updated = [...slideForm.customChips];
+                            updated[cIdx] = { ...updated[cIdx], titleAr: e.target.value };
+                            setSlideForm({ ...slideForm, customChips: updated });
+                          }}
+                          className="w-full text-xs px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:bg-white focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
@@ -1960,6 +2144,7 @@ export const PresentationsPage: React.FC = () => {
           initialSlideIndex={currentSlideIndex}
           onClose={() => setIsFullscreen(false)}
           defaultLanguage={language as 'ar' | 'en'}
+          schoolName={selectedPres.schoolName}
         />
       )}
 

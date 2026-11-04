@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Sparkles, AlertCircle, ArrowLeft, Globe } from 'lucide-react';
 import { api } from '../services/api';
 import { PublicPresentationDto } from '../types';
@@ -7,6 +7,7 @@ import { ExecutivePresentationView } from '../components/presentation/ExecutiveP
 
 export const PublicPresentationPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [presentation, setPresentation] = useState<PublicPresentationDto | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -120,7 +121,13 @@ export const PublicPresentationPage: React.FC = () => {
       isPublicMode={true}
       shareToken={token}
       expiresAtUtc={presentation.expiresAtUtc}
-      onClose={() => {}}
+      onClose={() => {
+        if (window.history.length > 1) {
+          navigate(-1);
+        } else {
+          navigate('/presentations');
+        }
+      }}
     />
   );
 };
